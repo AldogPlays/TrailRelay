@@ -14,3 +14,15 @@
 .cxx
 local.properties
 
+# Local environment, signing material, and generated artifacts
+.env
+.env.*
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.key
+*.pem
+*.apk
+*.aab
+.kotlin/
