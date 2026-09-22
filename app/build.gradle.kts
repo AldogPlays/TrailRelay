@@ -18,7 +18,15 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    buildFeatures {
+        resValues = true
+    }
+
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            resValue("string", "app_name", "TrailRelay Dev")
+        }
         release {
             isDebuggable = false
             // Sign locally with Android Studio's Generate Signed Bundle/APK wizard.

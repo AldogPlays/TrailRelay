@@ -282,20 +282,20 @@ Start by checking the connected device:
 
 The device must appear with the state `device`. `unauthorized` means the device has not accepted the computer's USB debugging authorization, and `offline` means adb cannot communicate with it normally; resolve that before testing.
 
-For a normal debug-over-debug install, use:
+For a debug build while keeping the release build installed, use:
 
     adb install -r app/build/outputs/apk/debug/app-debug.apk
 
-TrailRelay release and debug builds currently use the same package name, `com.trailrelay.app`, but they are signed with different certificates. If a release-signed TrailRelay is installed, installing a debug APK with `adb install -r` will fail because of the signature mismatch.
+Debug builds use the package name `com.trailrelay.app.debug`, while release builds use `com.trailrelay.app`. The separate application IDs allow both builds to remain installed on the same device, with separate app data. The debug app is labeled `TrailRelay Dev`; the release app remains labeled `TrailRelay`.
 
-Do not casually recommend uninstalling the release app. Uninstalling erases TrailRelay's app-local data, including imported and community trails, database state, and offline downloads. If uninstalling is actually necessary, warn the developer explicitly first, then use:
+Do not uninstall the release app when installing the debug build. If uninstalling a build is actually necessary, warn the developer explicitly first because it erases that build's app-local data, including imported and community trails, database state, and offline downloads. Use the matching package name:
 
+    adb uninstall com.trailrelay.app.debug
     adb uninstall com.trailrelay.app
-    adb install app/build/outputs/apk/debug/app-debug.apk
 
 Useful manual checks include:
 
-    adb shell am force-stop com.trailrelay.app
+    adb shell am force-stop com.trailrelay.app.debug
     adb logcat
 
 Do not invent complicated adb automation. Manual physical-device testing is the normal TrailRelay workflow.
