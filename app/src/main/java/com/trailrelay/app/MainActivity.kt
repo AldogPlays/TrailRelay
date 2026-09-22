@@ -1,11 +1,14 @@
 package com.trailrelay.app
 
 import android.Manifest
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.Button
 import android.widget.ImageButton
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -13,6 +16,9 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.trailrelay.app.location.ForegroundLocation
 import com.trailrelay.app.map.AerialMap
+import com.trailrelay.app.trails.MyTrailsActivity
+import com.trailrelay.app.trails.TrailStore
+import java.util.concurrent.Executors
 import org.maplibre.android.MapLibre
 import org.maplibre.android.maps.MapView
 
@@ -21,6 +27,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var aerialMap: AerialMap
     private lateinit var location: ForegroundLocation
     private lateinit var status: TextView
+    private val trailWorker = Executors.newSingleThreadExecutor()
+    private var selectedTrailId: String? = null
+    private var trailRequest = 0
+    private var pendingTrailFit = false
+    private val libraryRequest = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            result.data?.getStringExtra(MyTrailsActivity.EXTRA_TRAIL_ID)?.let { openTrail(it, true) }
+        }
+    }
     private var resumed = false
     private var locationStatus: Int? = null
     private var mapStatus: Int? = null
@@ -70,8 +85,40 @@ class MainActivity : AppCompatActivity() {
                 if (!hasFix) Log.i("TrailRelay", "Recenter waiting for a fresh location")
             }
         }
+        findViewById<Button>(R.id.my_trails).setOnClickListener {
+            libraryRequest.launch(Intent(this, MyTrailsActivity::class.java))
+        }
+        savedInstanceState?.getString("selectedTrailId")?.let { openTrail(it, savedInstanceState.getBoolean("pendingTrailFit")) }
         permissionRequested = savedInstanceState?.getBoolean("permissionRequested") ?: false
         if (!location.hasPermission() && !permissionRequested) requestLocation()
+    }
+
+    private fun openTrail(id: String, fit: Boolean) {
+        val previousTrailId = selectedTrailId
+        selectedTrailId = id
+        pendingTrailFit = fit
+        val request = ++trailRequest
+        trailWorker.execute {
+            val result = runCatching {
+                TrailStore(applicationContext).use { store ->
+                    val trail = store.get(id) ?: error("Trail record is missing")
+                    trail to store.load(trail)
+                }
+            }
+            runOnUiThread {
+                if (!isDestroyed && request == trailRequest) {
+                    result.onSuccess { (trail, track) ->
+                        aerialMap.showTrail(trail, track, fit)
+                        pendingTrailFit = false
+                    }
+                        .onFailure {
+                            selectedTrailId = previousTrailId
+                            pendingTrailFit = false
+                            Toast.makeText(this, R.string.trail_open_failed, Toast.LENGTH_LONG).show()
+                        }
+                }
+            }
+        }
     }
 
     private fun requestLocation() {
@@ -128,6 +175,8 @@ class MainActivity : AppCompatActivity() {
         super.onSaveInstanceState(outState)
         mapView.onSaveInstanceState(outState)
         aerialMap.saveState(outState)
+        outState.putString("selectedTrailId", selectedTrailId)
+        outState.putBoolean("pendingTrailFit", pendingTrailFit)
         outState.putBoolean("permissionRequested", permissionRequested)
     }
 
@@ -137,6 +186,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        trailWorker.shutdown()
         location.stop()
         aerialMap.destroy()
         mapView.onDestroy()

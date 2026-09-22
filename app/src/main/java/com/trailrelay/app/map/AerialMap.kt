@@ -10,8 +10,11 @@ import android.os.Looper
 import android.util.Log
 import com.trailrelay.app.R
 import com.trailrelay.app.location.ForegroundLocation
+import com.trailrelay.app.trails.GpxTrack
+import com.trailrelay.app.trails.Trail
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.location.LocationComponentActivationOptions
 import org.maplibre.android.location.LocationComponentOptions
 import org.maplibre.android.location.modes.CameraMode
@@ -34,6 +37,8 @@ class AerialMap(
     private var latest: Location? = null
     private var following = state?.getBoolean("following", true) ?: true
     private var centered = state?.getBoolean("centered", false) ?: false
+    private var selectedTrail: Pair<Trail, GpxTrack>? = null
+    private var fitTrailPending = state?.getBoolean("fitTrailPending") ?: false
     private var destroyed = false
     private val handler = Handler(Looper.getMainLooper())
     private val imageryTimeout = Runnable {
@@ -85,6 +90,7 @@ class AerialMap(
                 ready.addOnCameraMoveStartedListener { reason ->
                     if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
                         following = false
+                        fitTrailPending = false
                     }
                 }
                 loadStyle()
@@ -107,7 +113,41 @@ class AerialMap(
                 Log.i(TAG, "Bundled USGS raster style loaded")
                 onError(null)
                 updateLocationComponent()
+                selectedTrail?.let { TrailOverlay.render(loaded, it.second) }
+                fitSelectedTrail()
                 latest?.let(::showLocation)
+            }
+        }
+    }
+
+    fun showTrail(trail: Trail, track: GpxTrack, fit: Boolean = true) {
+        selectedTrail = trail to track
+        if (fit) {
+            following = false
+            centered = true
+            fitTrailPending = true
+        }
+        style?.let { TrailOverlay.render(it, track) }
+        fitSelectedTrail()
+    }
+
+    private fun fitSelectedTrail() {
+        if (!fitTrailPending || style == null) return
+        val ready = map ?: return
+        val trail = selectedTrail?.first ?: return
+        view.post {
+            if (!destroyed && fitTrailPending) {
+                fitTrailPending = false
+                if (trail.minLatitude == trail.maxLatitude && trail.minLongitude == trail.maxLongitude) {
+                    ready.moveCamera(CameraUpdateFactory.newLatLngZoom(
+                        LatLng(trail.minLatitude, trail.minLongitude), INITIAL_ZOOM))
+                } else {
+                    val bounds = LatLngBounds.Builder()
+                        .include(LatLng(trail.minLatitude, trail.minLongitude))
+                        .include(LatLng(trail.maxLatitude, trail.maxLongitude)).build()
+                    ready.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds,
+                        (64 * context.resources.displayMetrics.density).toInt()))
+                }
             }
         }
     }
@@ -162,6 +202,7 @@ class AerialMap(
     }
 
     fun recenter(): Boolean {
+        fitTrailPending = false
         following = true
         val location = latest?.takeIf(ForegroundLocation::isUsable) ?: return false
         if (map == null || style == null) return false
@@ -171,6 +212,7 @@ class AerialMap(
     }
 
     fun saveState(state: Bundle) {
+        state.putBoolean("fitTrailPending", fitTrailPending)
         state.putBoolean("following", following)
         state.putBoolean("centered", centered)
     }

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="TrailRelay test fixture" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>Milestone 2 test track</name>
+    <desc>Synthetic geometry for import testing; not a navigation route.</desc>
+    <trkseg>
+      <trkpt lat="37.730" lon="-119.590"><ele>1200</ele></trkpt>
+      <trkpt lat="37.732" lon="-119.588"><ele>1210</ele></trkpt>
+      <trkpt lat="37.734" lon="-119.589"><ele>1220</ele></trkpt>
+    </trkseg>
+    <trkseg>
+      <trkpt lat="37.740" lon="-119.580"/>
+      <trkpt lat="37.742" lon="-119.578"/>
+    </trkseg>
+    <trkseg><trkpt lat="37.736" lon="-119.582"/></trkseg>
+  </trk>
+</gpx>

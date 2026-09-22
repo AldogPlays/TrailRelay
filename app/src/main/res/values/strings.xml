@@ -6,4 +6,9 @@
     <string name="location_waiting">Waiting for your location. A clear view of the sky can help.</string>
     <string name="location_failed">Unable to obtain location. Tap recenter to retry.</string>
     <string name="map_failed">Unable to load USGS imagery. Check your connection, then tap this message to retry.</string>
+    <string name="my_trails">My Trails</string>
+    <string name="import_gpx">Import GPX</string>
+    <string name="back_to_map">Back to map</string>
+    <string name="no_trails">No trails yet. Import a GPX file to get started.</string>
+    <string name="trail_open_failed">Unable to open this saved trail. Import its GPX again to repair the local copy.</string>
 </resources>
