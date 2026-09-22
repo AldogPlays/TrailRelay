@@ -247,3 +247,92 @@ A normal coding task is complete when:
 * physical-device checks are clearly listed
 
 Successful compilation is not proof of runtime behavior.
+
+## Developer Verification and Milestone Handoff
+
+The developer is the person performing the physical-device checks and deciding when a milestone is ready to commit. The developer uses CachyOS / Arch Linux with Fish as the interactive shell. Do not provide Bash heredoc syntax. The Android project is built with Gradle from the repository root.
+
+The normal TrailRelay workflow is to test on a real Android device with `adb`, not an emulator. Do not start or require an emulator unless the developer explicitly requests one. Automated tests and Gradle builds do not replace manual device verification for behavior that depends on Android hardware, permissions, MapLibre, document providers, networking, or persisted app state.
+
+### Gradle verification
+
+For a cheap Kotlin compile check when appropriate, run from the repository root:
+
+    ./gradlew :app:compileDebugKotlin
+
+For normal milestone validation, run:
+
+    ./gradlew :app:testDebugUnitTest
+    ./gradlew :app:assembleDebug
+    git diff --check
+
+For release-related work, also run:
+
+    ./gradlew :app:assembleRelease
+
+The debug APK is normally located at:
+
+    app/build/outputs/apk/debug/app-debug.apk
+
+### Physical-device adb workflow
+
+Start by checking the connected device:
+
+    adb devices
+
+The device must appear with the state `device`. `unauthorized` means the device has not accepted the computer's USB debugging authorization, and `offline` means adb cannot communicate with it normally; resolve that before testing.
+
+For a normal debug-over-debug install, use:
+
+    adb install -r app/build/outputs/apk/debug/app-debug.apk
+
+TrailRelay release and debug builds currently use the same package name, `com.trailrelay.app`, but they are signed with different certificates. If a release-signed TrailRelay is installed, installing a debug APK with `adb install -r` will fail because of the signature mismatch.
+
+Do not casually recommend uninstalling the release app. Uninstalling erases TrailRelay's app-local data, including imported and community trails, database state, and offline downloads. If uninstalling is actually necessary, warn the developer explicitly first, then use:
+
+    adb uninstall com.trailrelay.app
+    adb install app/build/outputs/apk/debug/app-debug.apk
+
+Useful manual checks include:
+
+    adb shell am force-stop com.trailrelay.app
+    adb logcat
+
+Do not invent complicated adb automation. Manual physical-device testing is the normal TrailRelay workflow.
+
+Automated tests do not replace manual device verification for:
+
+* GPS/location permission and location display
+* follow/recenter behavior
+* MapLibre rendering
+* GPX import through Android's document picker
+* persistence across app restart
+* Community catalog networking/downloads
+* offline imagery downloads
+* actual offline use after networking is disabled
+
+When a milestone changes one of these areas, the final report must state exactly what the developer should test on the phone, including the relevant setup and expected result where useful.
+
+### Milestone completion protocol
+
+At the end of every milestone, Codex reports:
+
+1. What changed.
+2. Files changed.
+3. Tests and Gradle commands actually run, with their results.
+4. Anything not tested or that still requires physical-device verification.
+5. Exact developer commands and manual checks to perform next.
+6. Git status and whether the working tree is ready to commit.
+
+Codex must not automatically commit, merge, tag, push, delete branches, create GitHub releases, or otherwise change repository history or remotes unless the developer explicitly authorizes the git workflow. Once implementation and verification are complete, end the milestone with one short optional handoff: "If everything looks good after your device test, I can handle the git workflow (commit, merge, tag, push, and branch cleanup) if you want." Do not repeatedly ask this during implementation.
+
+If the developer explicitly authorizes the git workflow, inspect `git status` and the diff first, then perform only the operations appropriate to that milestone. For ordinary feature milestones, the preferred sequence is:
+
+* commit the milestone branch
+* switch to `main`
+* merge the milestone branch
+* push `main`
+* optionally create and push a milestone tag if the milestone warrants one
+* delete the completed local milestone branch
+
+Never create a version release tag such as `v0.1.0`, publish a GitHub Release, or modify repository visibility unless the developer explicitly requests that specific release or publication action.
