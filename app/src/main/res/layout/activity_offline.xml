@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/offline_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+        <Button android:id="@+id/offline_back" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/back_to_map" />
+        <TextView android:id="@+id/offline_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textAppearance="?android:attr/textAppearanceLarge" android:paddingTop="16dp" />
+        <TextView android:id="@+id/offline_details" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="16dp" />
+        <TextView android:id="@+id/offline_message" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="16dp" android:paddingBottom="16dp" />
+        <ProgressBar android:id="@+id/offline_progress" style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" />
+        <Button android:id="@+id/offline_download" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/download_offline" />
+        <Button android:id="@+id/offline_pause" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/pause_offline" />
+        <Button android:id="@+id/offline_retry" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/retry_offline" />
+        <Button android:id="@+id/offline_delete" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/remove_offline" />
+    </LinearLayout>
+</ScrollView>

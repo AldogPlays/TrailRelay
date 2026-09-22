@@ -16,6 +16,8 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.trailrelay.app.location.ForegroundLocation
 import com.trailrelay.app.map.AerialMap
+import com.trailrelay.app.offline.OfflineActivity
+import com.trailrelay.app.offline.OfflineDownloads
 import com.trailrelay.app.trails.MyTrailsActivity
 import com.trailrelay.app.trails.TrailStore
 import java.util.concurrent.Executors
@@ -31,6 +33,9 @@ class MainActivity : AppCompatActivity() {
     private var selectedTrailId: String? = null
     private var trailRequest = 0
     private var pendingTrailFit = false
+    private lateinit var offline: OfflineDownloads
+    private val offlineListener: () -> Unit = { renderOfflineAction() }
+    private var openedTrailId: String? = null
     private val libraryRequest = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
             result.data?.getStringExtra(MyTrailsActivity.EXTRA_TRAIL_ID)?.let { openTrail(it, true) }
@@ -56,6 +61,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         MapLibre.getInstance(this)
+        offline = OfflineDownloads.get(this)
         setContentView(R.layout.activity_main)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or
@@ -91,6 +97,11 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.community).setOnClickListener {
             libraryRequest.launch(Intent(this, com.trailrelay.app.trails.community.CommunityActivity::class.java))
         }
+        findViewById<Button>(R.id.selected_offline).setOnClickListener {
+            openedTrailId?.let { id ->
+                startActivity(Intent(this, OfflineActivity::class.java).putExtra(MyTrailsActivity.EXTRA_TRAIL_ID, id))
+            }
+        }
         savedInstanceState?.getString("selectedTrailId")?.let { openTrail(it, savedInstanceState.getBoolean("pendingTrailFit")) }
         permissionRequested = savedInstanceState?.getBoolean("permissionRequested") ?: false
         if (!location.hasPermission() && !permissionRequested) requestLocation()
@@ -111,7 +122,9 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 if (!isDestroyed && request == trailRequest) {
                     result.onSuccess { (trail, track) ->
+                        openedTrailId = trail.id
                         aerialMap.showTrail(trail, track, fit)
+                        renderOfflineAction()
                         pendingTrailFit = false
                     }
                         .onFailure {
@@ -121,6 +134,16 @@ class MainActivity : AppCompatActivity() {
                         }
                 }
             }
+        }
+    }
+
+    private fun renderOfflineAction() {
+        val available = openedTrailId?.let { offline.packageFor(it)?.complete } == true
+        aerialMap.setOfflineTrail(openedTrailId.takeIf { available })
+        findViewById<Button>(R.id.selected_offline).apply {
+            visibility = if (openedTrailId != null) View.VISIBLE else View.GONE
+            text = getString(if (available)
+                R.string.available_offline else R.string.download_offline)
         }
     }
 
@@ -153,6 +176,9 @@ class MainActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         mapView.onStart()
+        offline.listeners.add(offlineListener)
+        offline.refresh()
+        renderOfflineAction()
     }
 
     override fun onResume() {
@@ -170,6 +196,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
+        offline.listeners.remove(offlineListener)
         mapView.onStop()
         super.onStop()
     }

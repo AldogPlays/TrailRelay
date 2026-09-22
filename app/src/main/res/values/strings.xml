@@ -17,4 +17,11 @@
     <string name="difficulty_filter">Difficulty filter</string>
     <string name="vehicle_filter">Vehicle type filter</string>
     <string name="download_trail">Download Trail</string>
+    <string name="offline_maps">Offline Maps</string>
+    <string name="download_offline">Download Offline</string>
+    <string name="available_offline">Available Offline</string>
+    <string name="resume_offline">Resume Download</string>
+    <string name="pause_offline">Pause Download</string>
+    <string name="retry_offline">Retry</string>
+    <string name="remove_offline">Remove Offline Maps</string>
 </resources>

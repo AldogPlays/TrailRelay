@@ -38,6 +38,16 @@
         android:layout_marginBottom="104dp"
         android:text="@string/community" />
 
+    <Button
+        android:id="@+id/selected_offline"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="160dp"
+        android:visibility="gone"
+        android:text="@string/download_offline" />
+
     <ImageButton
         android:id="@+id/recenter"
         android:layout_width="48dp"

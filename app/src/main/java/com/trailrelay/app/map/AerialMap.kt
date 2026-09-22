@@ -40,6 +40,8 @@ class AerialMap(
     private var selectedTrail: Pair<Trail, GpxTrack>? = null
     private var fitTrailPending = state?.getBoolean("fitTrailPending") ?: false
     private var destroyed = false
+    private var offlineTrailId: String? = null
+    private var trailCameraUntouched = false
     private val handler = Handler(Looper.getMainLooper())
     private val imageryTimeout = Runnable {
         Log.w(TAG, "No USGS raster tile loaded within 30 seconds")
@@ -91,6 +93,7 @@ class AerialMap(
                     if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
                         following = false
                         fitTrailPending = false
+                        trailCameraUntouched = false
                     }
                 }
                 loadStyle()
@@ -107,7 +110,7 @@ class AerialMap(
         style = null
         handler.removeCallbacks(imageryTimeout)
         handler.postDelayed(imageryTimeout, 30_000)
-        ready.setStyle(Style.Builder().fromUri("asset://usgs_imagery.json")) { loaded ->
+        ready.setStyle(Style.Builder().fromUri(AERIAL_STYLE_URI)) { loaded ->
             if (!destroyed) {
                 style = loaded
                 Log.i(TAG, "Bundled USGS raster style loaded")
@@ -122,6 +125,7 @@ class AerialMap(
 
     fun showTrail(trail: Trail, track: GpxTrack, fit: Boolean = true) {
         selectedTrail = trail to track
+        trailCameraUntouched = fit
         if (fit) {
             following = false
             centered = true
@@ -129,6 +133,26 @@ class AerialMap(
         }
         style?.let { TrailOverlay.render(it, track) }
         fitSelectedTrail()
+    }
+
+    /** Keep the initial view of a downloaded trail inside its saved zoom range.
+     * A long trail may no longer fit entirely; start at its first point in that case.
+     * Never override a user's gesture, recenter action, or restored camera position.
+     */
+    fun setOfflineTrail(id: String?) {
+        offlineTrailId = id
+        ensureOfflineOpeningZoom()
+    }
+
+    private fun ensureOfflineOpeningZoom() {
+        val ready = map ?: return
+        val selected = selectedTrail ?: return
+        if (style == null || fitTrailPending || !trailCameraUntouched || selected.first.id != offlineTrailId) return
+        if (ready.cameraPosition.zoom < com.trailrelay.app.offline.OfflineCoverage.MIN_ZOOM) {
+            val first = selected.second.segments.firstOrNull { it.isNotEmpty() }?.first() ?: return
+            ready.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(first.latitude, first.longitude),
+                com.trailrelay.app.offline.OfflineCoverage.MIN_ZOOM.toDouble()))
+        }
     }
 
     private fun fitSelectedTrail() {
@@ -148,6 +172,7 @@ class AerialMap(
                     ready.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds,
                         (64 * context.resources.displayMetrics.density).toInt()))
                 }
+                ensureOfflineOpeningZoom()
             }
         }
     }
@@ -202,6 +227,7 @@ class AerialMap(
     }
 
     fun recenter(): Boolean {
+        trailCameraUntouched = false
         fitTrailPending = false
         following = true
         val location = latest?.takeIf(ForegroundLocation::isUsable) ?: return false
