@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">TrailRelay</string>
+    <string name="recenter">Recenter and follow my location</string>
+    <string name="permission_needed">Location permission is off. Tap recenter to allow location. If Android no longer prompts, enable it in app settings.</string>
+    <string name="location_disabled">Location is unavailable. Enable Location in phone settings; TrailRelay will retry automatically.</string>
+    <string name="location_waiting">Waiting for your location. A clear view of the sky can help.</string>
+    <string name="location_failed">Unable to obtain location. Tap recenter to retry.</string>
+    <string name="map_failed">Unable to load USGS imagery. Check your connection, then tap this message to retry.</string>
 </resources>

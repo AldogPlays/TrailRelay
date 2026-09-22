@@ -3,13 +3,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.trailrelay"
+    namespace = "com.trailrelay.app"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.example.trailrelay"
+        applicationId = "com.trailrelay.app"
         minSdk = 26
         targetSdk = 37
         versionCode = 1
@@ -34,9 +34,8 @@ android {
 dependencies {
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.appcompat)
-    implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.core.ktx)
-    implementation(libs.material)
+    implementation(libs.maplibre)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)

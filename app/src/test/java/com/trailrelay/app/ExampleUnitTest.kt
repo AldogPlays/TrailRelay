@@ -1,4 +1,4 @@
-package com.example.trailrelay
+package com.trailrelay.app
 
 import org.junit.Test
 
