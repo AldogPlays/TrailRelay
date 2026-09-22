@@ -9,6 +9,9 @@ import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
+import com.trailrelay.app.trails.TrailSession
+import com.trailrelay.app.trails.TrailsOverlay
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.trailrelay.app.location.ForegroundLocation
@@ -21,6 +24,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var aerialMap: AerialMap
     private lateinit var location: ForegroundLocation
     private lateinit var status: TextView
+    private lateinit var trails: TrailsOverlay
     private var resumed = false
     private var locationStatus: Int? = null
     private var mapStatus: Int? = null
@@ -51,7 +55,8 @@ class MainActivity : AppCompatActivity() {
         status = findViewById(R.id.status)
         mapView = findViewById(R.id.map_view)
         mapView.onCreate(savedInstanceState)
-        aerialMap = AerialMap(this, mapView, savedInstanceState) {
+        trails = TrailsOverlay(findViewById(R.id.main), ViewModelProvider(this)[TrailSession::class.java])
+        aerialMap = AerialMap(this, mapView, savedInstanceState, trails::attach) {
             mapStatus = it
             renderStatus()
         }
@@ -138,6 +143,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         location.stop()
+        trails.destroy()
         aerialMap.destroy()
         mapView.onDestroy()
         super.onDestroy()

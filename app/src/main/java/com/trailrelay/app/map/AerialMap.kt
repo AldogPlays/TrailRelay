@@ -26,6 +26,7 @@ class AerialMap(
     private val context: Context,
     private val view: MapView,
     state: Bundle?,
+    private val onStyleReady: (MapLibreMap, Style) -> Unit,
     private val onError: (Int?) -> Unit,
 ) {
     private var map: MapLibreMap? = null
@@ -106,6 +107,7 @@ class AerialMap(
                 style = loaded
                 Log.i(TAG, "Bundled USGS raster style loaded")
                 onError(null)
+                onStyleReady(ready, loaded)
                 updateLocationComponent()
                 latest?.let(::showLocation)
             }

@@ -6,4 +6,9 @@
     <string name="location_waiting">Waiting for your location. A clear view of the sky can help.</string>
     <string name="location_failed">Unable to obtain location. Tap recenter to retry.</string>
     <string name="map_failed">Unable to load USGS imagery. Check your connection, then tap this message to retry.</string>
+    <string name="trails">Trails</string>
+    <string name="trails_loading">Loading…</string>
+    <string name="trails_empty">No Terra Trails in this view.</string>
+    <string name="trails_zoom_in">Zoom in and tap Trails again. Previous results remain.</string>
+    <string name="trails_failed">Could not load trails. Tap Trails to retry. Previous results remain.</string>
 </resources>
