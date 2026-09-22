@@ -1,20 +1,22 @@
 # TrailRelay
 
-TrailRelay is a simple offline-first Android trail navigation app.
+TrailRelay is a simple local-first, offline-first Android trail navigation app.
 
-## Product
+## Core product
 
-The core experience is:
+The primary experience is:
 
-Install APK → grant location → see yourself on aerial imagery → show real nearby trails → select a trail → Download Offline → continue using the downloaded area without network access.
+Install APK → grant location → see yourself on USGS aerial imagery → browse/import a trail → open the trail → download map coverage around it → continue using it without network access.
 
-This is the only product goal for v0.1.
+Favor simplicity over configurability.
+
+Do not turn TrailRelay into a generic GIS application.
 
 ## Platform
 
-* Android only.
+* Android only for now.
 * Kotlin.
-* Traditional Android Views/XML.
+* Android Views/XML.
 * MapLibre Native Android.
 * Do not migrate to Compose.
 * Do not add cross-platform frameworks.
@@ -22,9 +24,9 @@ This is the only product goal for v0.1.
 * Do not add accounts or authentication.
 * Do not require user API keys.
 
-## Data sources
+## Maps
 
-Use official U.S. Geological Survey / The National Map sources for v0.1.
+USGS / The National Map supplies the map imagery.
 
 Primary map:
 
@@ -32,83 +34,169 @@ Primary map:
 * aerial imagery
 * default map
 
-Secondary map later:
+Potential secondary map later:
 
 * USGSTopo
 
-Trails:
-
-* USGSTrails
-* use real service data
-* never add fake/sample trails to production behavior
-
 Do not add other map providers unless explicitly requested.
+
+## Trail architecture
+
+TrailRelay trails are GPX-based.
+
+GPX is the canonical portable trail geometry format.
+
+TrailRelay has two conceptual trail sources:
+
+* IMPORTED — GPX selected by the user from local storage
+* COMMUNITY — GPX downloaded from the TrailRelay community catalog
+
+The COMMUNITY source will be implemented later.
+
+Do not use USGS Trails as the primary TrailRelay trail catalog.
+
+USGS trail-overlay experimentation exists separately and should not influence the core GPX architecture.
+
+## Local-first philosophy
+
+A downloaded or imported trail must remain usable without network access.
+
+Prefer:
+
+1. local trail metadata
+2. locally stored GPX files
+3. downloaded map coverage
+4. network resources only when needed
+
+The app should remain useful without an account or backend.
+
+## GPX files
+
+Original GPX files should be stored in application-private persistent storage.
+
+Do not store entire GPX XML documents as database blobs.
+
+Parse GPX into an internal Trail model for rendering and indexing.
+
+Support normal GPX track structures first:
+
+* gpx
+* trk
+* trkseg
+* trkpt
+
+Support standard metadata where useful:
+
+* name
+* desc
+* ele
+
+Do not attempt to support every proprietary GPX extension unless explicitly requested.
+
+## Trail persistence
+
+Use SQLiteOpenHelper for TrailRelay's local trail index.
+
+Do not introduce Room or another ORM unless explicitly requested later.
+
+SQLite stores trail metadata and indexes.
+
+GPX files remain ordinary files in app-private storage.
+
+Trail records should be designed so IMPORTED and COMMUNITY trails can eventually use the same model.
+
+## Community catalog — future architecture
+
+The community catalog is intended to be static and backend-free initially.
+
+Expected future design:
+
+GitHub repository
+→ individual trail metadata + GPX files
+→ generated catalog.json
+→ GitHub Pages/static hosting
+→ TrailRelay downloads catalog
+→ search/filter locally
+→ user downloads chosen GPX
+
+Do not implement this until explicitly requested.
+
+Do not add:
+
+* accounts
+* authentication
+* upload APIs
+* custom backend
+* server database
+
+## Map UI
+
+The map is the primary interface.
+
+Keep it uncluttered.
+
+Preserve:
+
+* USGS aerial imagery
+* GPS/location indicator
+* initial centering
+* manual panning
+* recenter/follow
+
+Trail selection should primarily come from the trail browser/library.
+
+Do not make precise tapping of thin trail lines the only way to select a trail.
+
+## Offline maps
+
+Offline imagery will be implemented after the local GPX trail library works.
+
+The eventual flow is:
+
+selected GPX trail
+→ determine geometry/bounds
+→ download useful USGS map coverage
+→ persist it
+→ work with networking disabled
+
+Prefer MapLibre's supported offline APIs before inventing custom tile-storage infrastructure.
+
+Do not implement offline imagery unless the current task explicitly requests it.
 
 ## Architecture
 
-Keep the project intentionally small.
+Keep responsibilities small and understandable.
 
-Preferred responsibilities:
+Expected areas:
 
-* MainActivity: screen orchestration only
-* map/: MapLibre setup and styles
-* location/: Android location handling
-* trails/: USGS trail querying and trail models
-* offline/: MapLibre offline pack handling
+* map/
+* location/
+* trails/
+* offline/ later
 
-Avoid giant files, but do not introduce architecture frameworks just for abstraction.
-
-Do NOT add:
+Avoid:
 
 * Hilt/Dagger
-* Room
-* navigation frameworks
-* networking frameworks
-* repository/use-case architecture
+* repository/use-case architecture for its own sake
+* service/factory abstraction layers
 * unnecessary dependencies
+* giant god objects
 
-Prefer Android/JDK APIs where practical.
+Prefer Android/JDK APIs where they are sufficient.
 
-## Location
+## Scope discipline
 
-Use Android platform location APIs.
+One task should have one measurable outcome.
 
-Do not require Google Play Services for location.
+Do not implement adjacent features because they seem useful.
 
-Request only the permissions actually needed.
+Do not redesign unrelated working code.
 
-## UI
+Do not add dependencies without explaining why the existing Android/JDK/MapLibre capabilities are insufficient.
 
-The map is the product.
-
-Main screen should be almost entirely the map.
-
-Initially expose only:
-
-* location/recenter
-* Trails
-* selected trail information
-* Download Offline
-
-Avoid dashboards, cards everywhere, configuration screens, developer controls, onboarding flows, API-key screens, and provider settings.
-
-## Offline
-
-Use MapLibre's supported offline APIs before inventing custom tile storage.
-
-For the first working implementation:
-
-* download a simple padded bounding region around the selected trail
-* keep the implementation understandable
-* optimize into an adaptive corridor later
-
-Do not build a custom tile database unless MapLibre's supported offline implementation proves insufficient.
-
-Downloaded coverage must survive process death and application restart.
+If an unrelated improvement is noticed, mention it rather than implementing it.
 
 ## Codex validation rules
-
-THIS SECTION IS IMPORTANT.
 
 Do not launch an Android emulator unless the task explicitly contains:
 
@@ -126,54 +214,36 @@ Do not run:
 
 unless explicitly requested.
 
-Never wait for an emulator to boot during ordinary implementation work.
+Never wait for an emulator during normal development.
 
-For ordinary Kotlin-only changes, prefer:
+For Kotlin-only changes, prefer:
 
 ./gradlew :app:compileDebugKotlin
 
-For changes involving resources, manifest, Gradle, or a complete milestone, use:
+For complete milestones, resources, manifests, or Gradle changes, use:
 
 ./gradlew :app:assembleDebug
 
-Do not repeatedly rerun successful checks unless additional code affecting them changed.
+The developer performs physical-device testing manually.
 
-The developer will perform real-device testing manually.
+Do not claim physical-device behavior was verified unless it actually was.
 
-If something requires real-device validation, state what needs to be tested instead of blocking the task waiting for a device or emulator.
+## APK
 
-## APK milestones
-
-At the end of a milestone, produce a debug APK with:
-
-./gradlew :app:assembleDebug
-
-Expected output:
+Milestones should produce:
 
 app/build/outputs/apk/debug/app-debug.apk
 
 Do not configure release signing until explicitly requested.
 
-## Scope discipline
-
-One task means one outcome.
-
-Do not implement unrelated improvements.
-
-Do not redesign working code during a focused task.
-
-Do not add dependencies without explaining why the Android/JDK/MapLibre APIs already available are insufficient.
-
-If you notice an unrelated improvement, mention it in the final summary instead of implementing it.
-
 ## Definition of done
 
-A normal coding task is done when:
+A normal coding task is complete when:
 
 * requested behavior is implemented
-* code compiles using the validation level appropriate to the change
-* no unrelated behavior was added
-* changed files are summarized
-* any required real-device checks are listed
+* appropriate compilation/build validation passes
+* unrelated features were not added
+* files changed are summarized
+* physical-device checks are clearly listed
 
-Successful compilation is not proof of runtime behavior. Do not claim device behavior was verified unless it actually was.
+Successful compilation is not proof of runtime behavior.
