@@ -248,6 +248,32 @@ A normal coding task is complete when:
 
 Successful compilation is not proof of runtime behavior.
 
+## Routine milestone Git workflow
+
+When the developer describes a new TrailRelay milestone in plain English while working from this repository, Codex manages the routine local Git setup.
+
+Before modifying files for a new milestone, inspect:
+
+    git status
+    git branch --show-current
+    git log --oneline --decorate -8
+
+If the working tree contains unexpected uncommitted changes, stop and explain the situation. Do not stash, reset, discard, or overwrite those changes.
+
+When the working tree is clean, normally ensure development starts from `main`. If the current branch is not `main`, switch to the existing local `main` branch without changing or deleting any work. Update `main` with:
+
+    git pull --ff-only
+
+If `main` cannot be fast-forwarded cleanly, stop and explain the problem rather than resolving history automatically. Codex does not need to ask permission to inspect repository state, switch to a clean `main` branch, fast-forward `main`, or create the milestone branch.
+
+Create an appropriately named milestone branch automatically using:
+
+    milestone/<short-descriptive-name>
+
+Choose the short descriptive name from the milestone when it is obvious; do not ask the developer to name the branch in that case. Never overwrite or delete an existing branch to make room for a milestone branch. If the obvious name already exists, choose a clear unused variant or stop and explain the collision before modifying files.
+
+During milestone development, Codex may edit files, add or remove files required by the milestone, inspect Git status/diffs/history, run the Gradle verification described below, use `adb` only according to the physical-device rules below, and make iterative fixes. Keep the milestone focused. Do not commit partial implementation work unless the developer explicitly requests an intermediate commit.
+
 ## Developer Verification and Milestone Handoff
 
 The developer is the person performing the physical-device checks and deciding when a milestone is ready to commit. The developer uses CachyOS / Arch Linux with Fish as the interactive shell. Do not provide Bash heredoc syntax. The Android project is built with Gradle from the repository root.
@@ -315,7 +341,7 @@ When a milestone changes one of these areas, the final report must state exactly
 
 ### Milestone completion protocol
 
-At the end of every milestone, Codex reports:
+Once implementation and automated validation are complete, Codex does not commit yet. Codex reports:
 
 1. What changed.
 2. Files changed.
@@ -324,7 +350,7 @@ At the end of every milestone, Codex reports:
 5. Exact developer commands and manual checks to perform next.
 6. Git status and whether the working tree is ready to commit.
 
-Codex must not automatically commit, merge, tag, push, delete branches, create GitHub releases, or otherwise change repository history or remotes unless the developer explicitly authorizes the git workflow. Once implementation and verification are complete, end the milestone with one short optional handoff: "If everything looks good after your device test, I can handle the git workflow (commit, merge, tag, push, and branch cleanup) if you want." Do not repeatedly ask this during implementation.
+When physical-device verification is relevant, wait for the developer's result before proposing the Git workflow. If the developer reports that device testing works, or otherwise approves the completed milestone, inspect the final status and diff again. Then explain in plain English exactly what Git actions are prepared, including the intended commit, merge into `main`, push, any milestone tag, and completed local branch cleanup. Wait for explicit approval before performing any of those actions. A simple response such as `yes`, `do it`, `go ahead`, or `handle the git workflow` counts as approval for the actions just described. Do not repeatedly ask for approval during implementation.
 
 If the developer explicitly authorizes the git workflow, inspect `git status` and the diff first, then perform only the operations appropriate to that milestone. For ordinary feature milestones, the preferred sequence is:
 
@@ -332,7 +358,13 @@ If the developer explicitly authorizes the git workflow, inspect `git status` an
 * switch to `main`
 * merge the milestone branch
 * push `main`
-* optionally create and push a milestone tag if the milestone warrants one
+* create and push an appropriately numbered milestone tag when the milestone warrants one
 * delete the completed local milestone branch
 
+Before choosing a milestone tag number, inspect existing milestone tags and determine the next number automatically. Do not require the developer to track milestone numbers manually. Milestone tags such as `milestone-9-something` are separate from version release tags.
+
 Never create a version release tag such as `v0.1.0`, publish a GitHub Release, or modify repository visibility unless the developer explicitly requests that specific release or publication action.
+
+Never force-push, rewrite published history, amend an already-pushed commit unless explicitly requested, or delete remote branches or tags unless explicitly requested.
+
+Normal milestone approval does not authorize release publication. Never create or move version tags such as `v0.1.0`, `v0.2.0`, or `v1.0.0`; publish a GitHub Release; change repository visibility; upload release APKs/AABs; or rotate or generate release signing credentials. These actions require separate explicit release-specific authorization.
