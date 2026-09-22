@@ -29,6 +29,15 @@
         android:layout_marginBottom="48dp"
         android:text="@string/my_trails" />
 
+    <Button
+        android:id="@+id/community"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="104dp"
+        android:text="@string/community" />
+
     <ImageButton
         android:id="@+id/recenter"
         android:layout_width="48dp"

@@ -88,6 +88,9 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.my_trails).setOnClickListener {
             libraryRequest.launch(Intent(this, MyTrailsActivity::class.java))
         }
+        findViewById<Button>(R.id.community).setOnClickListener {
+            libraryRequest.launch(Intent(this, com.trailrelay.app.trails.community.CommunityActivity::class.java))
+        }
         savedInstanceState?.getString("selectedTrailId")?.let { openTrail(it, savedInstanceState.getBoolean("pendingTrailFit")) }
         permissionRequested = savedInstanceState?.getBoolean("permissionRequested") ?: false
         if (!location.hasPermission() && !permissionRequested) requestLocation()

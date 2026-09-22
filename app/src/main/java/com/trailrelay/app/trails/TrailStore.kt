@@ -10,9 +10,13 @@ import android.provider.OpenableColumns
 import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
+import com.trailrelay.app.trails.community.CatalogEntry
+import com.trailrelay.app.trails.community.CommunityClient
+import com.trailrelay.app.trails.community.communityTrailId
+import com.trailrelay.app.trails.community.toLocalTrail
 
 /** Call on a worker thread. GPX bytes are staged privately, validated, then published atomically. */
-class TrailStore(private val context: Context) : SQLiteOpenHelper(context, "trails.db", null, 1) {
+class TrailStore(private val context: Context) : SQLiteOpenHelper(context, "trails.db", null, 2) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("""
             CREATE TABLE trails (
@@ -26,12 +30,17 @@ class TrailStore(private val context: Context) : SQLiteOpenHelper(context, "trai
                 min_longitude REAL NOT NULL,
                 max_latitude REAL NOT NULL,
                 max_longitude REAL NOT NULL,
-                imported_at INTEGER NOT NULL
+                imported_at INTEGER NOT NULL,
+                remote_id TEXT,
+                UNIQUE(source, remote_id)
             )
         """.trimIndent())
     }
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        error("No schema migration defined from $oldVersion to $newVersion")
+        if (oldVersion < 2) {
+            db.execSQL("ALTER TABLE trails ADD COLUMN remote_id TEXT")
+            db.execSQL("CREATE UNIQUE INDEX trail_remote_identity ON trails(source, remote_id)")
+        }
     }
 
     fun list(): List<Trail> = readableDatabase.query("trails", null, null, null, null, null,
@@ -79,16 +88,8 @@ class TrailStore(private val context: Context) : SQLiteOpenHelper(context, "trai
             // Replacing with identical validated bytes also repairs a missing private file.
             if (!staged.renameTo(destination)) throw IOException("Cannot save the GPX file.")
             if (existing == null) {
-                val values = ContentValues().apply {
-                    put("id", trail.id); put("name", trail.name); put("description", trail.description)
-                    put("source", trail.source.name); put("gpx_local_path", trail.gpxLocalPath)
-                    put("distance_meters", trail.distanceMeters)
-                    put("min_latitude", trail.minLatitude); put("min_longitude", trail.minLongitude)
-                    put("max_latitude", trail.maxLatitude); put("max_longitude", trail.maxLongitude)
-                    put("imported_at", trail.importedAt)
-                }
                 try {
-                    writableDatabase.insertOrThrow("trails", null, values)
+                    writableDatabase.insertOrThrow("trails", null, trail.values())
                 } catch (error: Exception) {
                     destination.delete()
                     throw error
@@ -98,6 +99,51 @@ class TrailStore(private val context: Context) : SQLiteOpenHelper(context, "trai
         } finally {
             staged.delete()
         }
+    }
+
+    fun download(entry: CatalogEntry): Trail {
+        val directory = File(context.filesDir, "trails")
+        if (!directory.isDirectory && !directory.mkdirs()) throw IOException("Cannot create trail storage.")
+        val staged = File.createTempFile("community-", ".tmp", directory)
+        var published: File? = null
+        try {
+            staged.outputStream().use {
+                CommunityClient.download(entry.gpxUrl, it)
+                it.fd.sync()
+            }
+            val track = staged.inputStream().use(GpxParser::parse)
+            val id = communityTrailId(entry.id)
+            val existing = get(id)
+            // A new filename keeps the previous GPX intact until SQLite commits the replacement.
+            val relativePath = "trails/$id-${java.util.UUID.randomUUID()}.gpx"
+            val destination = File(context.filesDir, relativePath)
+            val trail = entry.toLocalTrail(track, relativePath, System.currentTimeMillis())
+            if (!staged.renameTo(destination)) throw IOException("Cannot save the GPX file.")
+            published = destination
+            val db = writableDatabase
+            db.beginTransaction()
+            try {
+                if (existing == null) db.insertOrThrow("trails", null, trail.values())
+                else check(db.update("trails", trail.values(), "id = ? AND source = ? AND remote_id = ?",
+                    arrayOf(id, TrailSource.COMMUNITY.name, entry.id)) == 1)
+                db.setTransactionSuccessful()
+            } finally { db.endTransaction() }
+            published = null
+            existing?.let { File(context.filesDir, it.gpxLocalPath).delete() }
+            return trail
+        } finally {
+            staged.delete()
+            published?.delete()
+        }
+    }
+
+    private fun Trail.values() = ContentValues().apply {
+        put("id", id); put("name", name); put("description", description)
+        put("source", source.name); put("gpx_local_path", gpxLocalPath)
+        put("distance_meters", distanceMeters)
+        put("min_latitude", minLatitude); put("min_longitude", minLongitude)
+        put("max_latitude", maxLatitude); put("max_longitude", maxLongitude)
+        put("imported_at", importedAt); put("remote_id", remoteId)
     }
 
     private fun documentName(uri: Uri): String {
@@ -115,5 +161,6 @@ class TrailStore(private val context: Context) : SQLiteOpenHelper(context, "trai
         getDouble(getColumnIndexOrThrow("min_latitude")), getDouble(getColumnIndexOrThrow("min_longitude")),
         getDouble(getColumnIndexOrThrow("max_latitude")), getDouble(getColumnIndexOrThrow("max_longitude")),
         getLong(getColumnIndexOrThrow("imported_at")),
+        getString(getColumnIndexOrThrow("remote_id")),
     )
 }

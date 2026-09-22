@@ -11,4 +11,10 @@
     <string name="back_to_map">Back to map</string>
     <string name="no_trails">No trails yet. Import a GPX file to get started.</string>
     <string name="trail_open_failed">Unable to open this saved trail. Import its GPX again to repair the local copy.</string>
+    <string name="community">Community</string>
+    <string name="search_community">Search community trails</string>
+    <string name="state_filter">State filter</string>
+    <string name="difficulty_filter">Difficulty filter</string>
+    <string name="vehicle_filter">Vehicle type filter</string>
+    <string name="download_trail">Download Trail</string>
 </resources>

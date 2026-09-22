@@ -18,6 +18,12 @@ import java.util.Locale
 
 class MyTrailsActivity : AppCompatActivity() {
     private lateinit var model: TrailLibraryModel
+    private val community = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            setResult(RESULT_OK, result.data)
+            finish()
+        }
+    }
     private val picker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let(model::import)
     }
@@ -39,6 +45,9 @@ class MyTrailsActivity : AppCompatActivity() {
         findViewById<ListView>(R.id.trail_list).setOnItemClickListener { _, _, position, _ ->
             setResult(RESULT_OK, Intent().putExtra(EXTRA_TRAIL_ID, model.trails[position].id))
             finish()
+        }
+        findViewById<Button>(R.id.community).setOnClickListener {
+            community.launch(Intent(this, com.trailrelay.app.trails.community.CommunityActivity::class.java))
         }
         model.onChange = ::render
         render()
@@ -67,6 +76,11 @@ class MyTrailsActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        model.refresh()
     }
 
     override fun onDestroy() {

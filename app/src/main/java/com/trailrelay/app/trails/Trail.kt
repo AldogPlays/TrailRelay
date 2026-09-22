@@ -16,6 +16,7 @@ data class Trail(
     val maxLatitude: Double,
     val maxLongitude: Double,
     val importedAt: Long,
+    val remoteId: String? = null,
 )
 
 data class TrackPoint(val latitude: Double, val longitude: Double, val elevation: Double? = null)

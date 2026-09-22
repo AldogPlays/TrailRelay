@@ -22,6 +22,9 @@
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="16dp"
         android:text="@string/import_gpx" />
+    <Button android:id="@+id/community" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:layout_marginHorizontal="16dp"
+        android:text="@string/community" />
     <ProgressBar
         android:id="@+id/library_progress"
         style="?android:attr/progressBarStyleHorizontal"
