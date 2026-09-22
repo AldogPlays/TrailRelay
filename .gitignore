@@ -25,4 +25,16 @@ local.properties
 *.pem
 *.apk
 *.aab
+*.apks
+*.idsig
+*.keystore.*
+keystore.properties
+keystore.*.properties
+signing.properties
+signing.*.properties
+*.signing.properties
+passwords.properties
+passwords.*
+secrets.properties
+/app/release/
 .kotlin/

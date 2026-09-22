@@ -22,6 +22,8 @@ Coverage currently uses the trail's bounding box with about 1.5 km of padding on
 
 ## Alpha status
 
+The current release candidate is **0.1.0 (early alpha)**. See the [release notes](docs/release-notes-0.1.0.md). Release APKs will appear under [GitHub Releases](https://github.com/AldogPlays/TrailRelay/releases) once published.
+
 TrailRelay is an early solo project. Trail and catalog metadata may be incomplete, and downloaded coverage should be checked before relying on it remotely. You are responsible for checking trail legality, closures, land access, and safe navigation. Keep another navigation and safety option available; TrailRelay should not be your sole system in remote areas.
 
 ## Community trails and maps
@@ -32,7 +34,7 @@ Aerial imagery currently comes from USGS / The National Map's `USGSImageryOnly` 
 
 ## Building
 
-Use Android Studio compatible with the project's Android Gradle Plugin (currently 9.4.1), and install Android SDK Platform 37 through SDK Manager. The Gradle daemon is pinned to **JDK 25** in `gradle/gradle-daemon-jvm.properties`; the wrapper is configured to provision that toolchain when needed. Initial setup and dependency downloads require internet access.
+Use Android Studio compatible with the project's Android Gradle Plugin (currently 9.4.1), and install Android SDK Platform 37 through SDK Manager. The Gradle daemon is pinned to **JDK 17** in `gradle/gradle-daemon-jvm.properties`; the wrapper is configured to provision that toolchain when needed. Initial setup and dependency downloads require internet access.
 
 ```sh
 git clone https://github.com/AldogPlays/TrailRelay.git
@@ -53,6 +55,8 @@ app/build/outputs/apk/debug/app-debug.apk
 ```
 
 Development testing currently primarily uses a physical Android device. An emulator is not required for these JVM tests or the debug build. Successful compilation does not verify GPS or offline behavior on a device.
+
+GitHub Actions runs the unit tests and builds the debug APK for pushes and pull requests to `main`, without signing secrets or automatic publishing. For a signed release APK, follow the [local release instructions](docs/releasing.md).
 
 ## Architecture
 
