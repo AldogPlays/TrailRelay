@@ -1,4 +1,59 @@
 <resources>
-    <style name="Base.Theme.TrailRelay" parent="Theme.AppCompat.DayNight.NoActionBar" />
-    <style name="Theme.TrailRelay" parent="Base.Theme.TrailRelay" />
+    <style name="Theme.TrailRelay" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/trail_primary</item>
+        <item name="colorOnPrimary">@color/trail_on_primary</item>
+        <item name="colorPrimaryContainer">@color/trail_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/trail_on_primary_container</item>
+        <item name="colorSecondary">@color/trail_secondary</item>
+        <item name="colorOnSecondary">@color/trail_on_secondary</item>
+        <item name="colorSurface">@color/trail_surface</item>
+        <item name="colorOnSurface">@color/trail_on_surface</item>
+        <item name="colorSurfaceVariant">@color/trail_surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/trail_on_surface_variant</item>
+        <item name="colorOutline">@color/trail_outline</item>
+        <item name="colorError">@color/trail_error</item>
+        <item name="colorOnError">@color/trail_on_error</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="materialButtonStyle">@style/Widget.TrailRelay.Button</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.TrailRelay.Dialog</item>
+    </style>
+
+    <style name="Widget.TrailRelay.Button" parent="Widget.Material3.Button">
+        <item name="cornerRadius">@dimen/trail_corner_radius</item>
+        <item name="android:minHeight">48dp</item>
+    </style>
+
+    <style name="Widget.TrailRelay.OutlinedButton" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="cornerRadius">@dimen/trail_corner_radius</item>
+        <item name="android:minHeight">48dp</item>
+    </style>
+
+    <style name="Widget.TrailRelay.MapButton" parent="Widget.Material3.Button.ElevatedButton">
+        <item name="cornerRadius">@dimen/trail_corner_radius</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="backgroundTint">@color/trail_surface</item>
+        <item name="android:textColor">@color/trail_on_surface</item>
+    </style>
+
+    <style name="Widget.TrailRelay.SearchField" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxCornerRadiusTopStart">@dimen/trail_corner_radius</item>
+        <item name="boxCornerRadiusTopEnd">@dimen/trail_corner_radius</item>
+        <item name="boxCornerRadiusBottomStart">@dimen/trail_corner_radius</item>
+        <item name="boxCornerRadiusBottomEnd">@dimen/trail_corner_radius</item>
+    </style>
+
+    <style name="ThemeOverlay.TrailRelay.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="alertDialogStyle">@style/MaterialAlertDialog.TrailRelay</item>
+    </style>
+
+    <style name="MaterialAlertDialog.TrailRelay" parent="MaterialAlertDialog.Material3">
+        <item name="shapeAppearance">@style/ShapeAppearance.TrailRelay.Dialog</item>
+    </style>
+
+    <style name="ShapeAppearance.TrailRelay.Dialog" parent="ShapeAppearance.Material3.Corner.Medium">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">@dimen/trail_corner_radius</item>
+    </style>
 </resources>

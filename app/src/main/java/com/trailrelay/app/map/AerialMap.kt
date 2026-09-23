@@ -83,7 +83,7 @@ class AerialMap(
                 map = ready
                 ready.uiSettings.isCompassEnabled = false
                 ready.uiSettings.isLogoEnabled = false
-                // Keep the source attribution accessible through MapLibre's attribution control.
+                ready.uiSettings.isAttributionEnabled = false
                 ready.setMinZoomPreference(1.0)
                 ready.setMaxZoomPreference(19.0)
                 if (state == null) {

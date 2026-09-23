@@ -14,6 +14,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.ViewModelProvider
 import com.trailrelay.app.R
+import com.trailrelay.app.trails.TrailSource
 import java.util.Locale
 
 class MyTrailsActivity : AppCompatActivity() {
@@ -61,16 +62,17 @@ class MyTrailsActivity : AppCompatActivity() {
         findViewById<ListView>(R.id.trail_list).apply {
             isEnabled = !model.busy
             adapter = object : ArrayAdapter<Trail>(this@MyTrailsActivity,
-                android.R.layout.simple_list_item_2, android.R.id.text1, model.trails) {
+                R.layout.trail_list_item, R.id.trail_row_name, model.trails) {
                 override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View {
                     return super.getView(position, convertView, parent).apply {
                         val trail = getItem(position)!!
-                        findViewById<TextView>(android.R.id.text1).text = trail.name
-                        findViewById<TextView>(android.R.id.text2).apply {
-                            text = listOfNotNull(String.format(Locale.getDefault(), "%.2f mi", trail.distanceMeters / 1609.344),
-                                trail.description?.takeIf { it.isNotBlank() }).joinToString(" · ")
-                            maxLines = 3
-                            ellipsize = android.text.TextUtils.TruncateAt.END
+                        findViewById<TextView>(R.id.trail_row_name).text = trail.name
+                        findViewById<TextView>(R.id.trail_row_meta).text =
+                            "${getString(if (trail.source == TrailSource.COMMUNITY) R.string.source_community else R.string.source_imported)} · " +
+                                String.format(Locale.getDefault(), "%.2f mi", trail.distanceMeters / 1609.344)
+                        findViewById<TextView>(R.id.trail_row_detail).apply {
+                            text = trail.description.orEmpty()
+                            visibility = if (trail.description.isNullOrBlank()) View.GONE else View.VISIBLE
                         }
                     }
                 }

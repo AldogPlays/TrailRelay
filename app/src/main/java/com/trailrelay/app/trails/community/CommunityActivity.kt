@@ -13,6 +13,8 @@ import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.ViewModelProvider
 import com.trailrelay.app.R
 import com.trailrelay.app.trails.MyTrailsActivity
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.progressindicator.LinearProgressIndicator
 
 class CommunityActivity : AppCompatActivity() {
     private lateinit var model: CommunityModel
@@ -69,7 +71,7 @@ class CommunityActivity : AppCompatActivity() {
         filter(R.id.state_filter, "All states", model.entries.mapNotNull { it.state }, model.state) { model.state = it }
         filter(R.id.difficulty_filter, "All difficulties", model.entries.mapNotNull { it.difficulty }, model.difficulty) { model.difficulty = it }
         filter(R.id.vehicle_filter, "All vehicle types", VEHICLE_TYPES + model.entries.flatMap { it.vehicleTypes.orEmpty() }, model.vehicle) { model.vehicle = it }
-        findViewById<ProgressBar>(R.id.community_progress).visibility =
+        findViewById<LinearProgressIndicator>(R.id.community_progress).visibility =
             if (model.refreshing || model.downloading) View.VISIBLE else View.GONE
         findViewById<ListView>(R.id.community_list).isEnabled = !model.downloading
         renderList()
@@ -77,16 +79,26 @@ class CommunityActivity : AppCompatActivity() {
 
     private fun renderList() {
         visibleEntries = CommunityCatalog.filter(model.entries, model.query, model.state, model.difficulty, model.vehicle)
-        findViewById<TextView>(R.id.community_message).text = model.message +
-            if (visibleEntries.isEmpty()) "\nNo matching trails." else "\n${visibleEntries.size} trails"
+        findViewById<TextView>(R.id.community_message).text = model.message + when {
+            model.refreshing && visibleEntries.isEmpty() -> ""
+            visibleEntries.isEmpty() && model.entries.isNotEmpty() -> "\n${getString(R.string.no_matching_trails)}"
+            visibleEntries.isEmpty() -> "\n${getString(R.string.no_community_trails)}"
+            else -> "\n${resources.getQuantityString(R.plurals.trail_count, visibleEntries.size, visibleEntries.size)}"
+        }
         findViewById<ListView>(R.id.community_list).adapter = object : ArrayAdapter<CatalogEntry>(this,
-            android.R.layout.simple_list_item_2, android.R.id.text1, visibleEntries) {
+            R.layout.trail_list_item, R.id.trail_row_name, visibleEntries) {
             override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View =
                 super.getView(position, convertView, parent).apply {
                     val entry = getItem(position)!!
-                    findViewById<TextView>(android.R.id.text1).text = entry.name
-                    findViewById<TextView>(android.R.id.text2).text =
-                        listOfNotNull(entry.state, entry.region, entry.difficulty).joinToString(" · ")
+                    findViewById<TextView>(R.id.trail_row_name).text = entry.name
+                    findViewById<TextView>(R.id.trail_row_meta).text =
+                        listOfNotNull(entry.distanceMiles?.let { "%.1f mi".format(it) },
+                            entry.difficulty, getString(if (entry.id in model.savedRemoteIds)
+                                R.string.in_my_trails else R.string.available_to_download)).joinToString(" · ")
+                    findViewById<TextView>(R.id.trail_row_detail).apply {
+                        text = listOfNotNull(entry.state, entry.region).joinToString(" · ")
+                        visibility = if (text.isBlank()) View.GONE else View.VISIBLE
+                    }
                 }
         }
     }
@@ -102,8 +114,10 @@ class CommunityActivity : AppCompatActivity() {
             entry.distanceMiles?.let { "Catalog distance: $it mi" },
             entry.updatedAt?.let { "Updated: $it" }, "GPX: ${entry.gpxUrl}"
         ).joinToString("\n\n")
-        dialog = AlertDialog.Builder(this).setTitle(entry.name).setMessage(details)
-            .setPositiveButton(R.string.download_trail) { _, _ -> model.selected = null; model.download(entry) }
+        dialog = MaterialAlertDialogBuilder(this).setTitle(entry.name).setMessage(details)
+            .setPositiveButton(if (entry.id in model.savedRemoteIds) R.string.update_trail else R.string.download_trail) { _, _ ->
+                model.selected = null; model.download(entry)
+            }
             .setNegativeButton(android.R.string.cancel) { _, _ -> model.selected = null }
             .setOnCancelListener { model.selected = null }.show()
     }

@@ -5,10 +5,10 @@ import android.util.Log
 import android.text.format.Formatter
 import android.view.View
 import android.widget.Button
-import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -16,6 +16,7 @@ import com.trailrelay.app.R
 import com.trailrelay.app.trails.MyTrailsActivity
 import com.trailrelay.app.trails.Trail
 import com.trailrelay.app.trails.TrailStore
+import com.google.android.material.progressindicator.LinearProgressIndicator
 import org.maplibre.android.MapLibre
 import java.util.concurrent.Executors
 
@@ -49,7 +50,7 @@ class OfflineActivity : AppCompatActivity() {
         findViewById<Button>(R.id.offline_retry).setOnClickListener { downloads.refresh() }
         findViewById<Button>(R.id.offline_delete).setOnClickListener {
             val item = trail?.let { downloads.packageFor(it.id) } ?: return@setOnClickListener
-            dialog = AlertDialog.Builder(this).setTitle(R.string.remove_offline)
+            dialog = MaterialAlertDialogBuilder(this).setTitle(R.string.remove_offline)
                 .setMessage("Remove this trail’s downloaded aerial coverage? Your trail and GPX will stay in My Trails.")
                 .setNegativeButton(android.R.string.cancel, null)
                 .setPositiveButton(R.string.remove_offline) { _, _ -> downloads.delete(item) }.show()
@@ -95,8 +96,7 @@ class OfflineActivity : AppCompatActivity() {
             append("Offline aerial coverage\nZooms 12–16\nAbout 1.5 km around the trail bounds")
             estimate?.let { append("\nApproximate tile count: %,d".format(it)) }
         }
-        findViewById<TextView>(R.id.offline_message).text = buildString {
-            append(when {
+        findViewById<TextView>(R.id.offline_state).text = when {
                 trailError != null -> trailError
                 selected == null -> "Loading trail…"
                 downloads.loadError != null -> downloads.loadError
@@ -109,9 +109,10 @@ class OfflineActivity : AppCompatActivity() {
                 item != null && status == null -> "Checking download progress…"
                 item != null -> "Download incomplete or paused. Resume to finish."
                 else -> "Ready to download."
-            })
+            }
+        findViewById<TextView>(R.id.offline_message).text = buildString {
             status?.let {
-                append("\n%,d tiles downloaded".format(it.completedTileCount))
+                append("%,d tiles downloaded".format(it.completedTileCount))
                 append("\n${Formatter.formatFileSize(this@OfflineActivity, it.completedResourceSize)} downloaded")
                 if (it.isRequiredResourceCountPrecise && it.requiredResourceCount > 0) {
                     append("\n%,d / %,d resources".format(it.completedResourceCount, it.requiredResourceCount))
@@ -119,13 +120,23 @@ class OfflineActivity : AppCompatActivity() {
                 }
             }
             listOfNotNull(areaError, selected?.let { downloads.errorFor(it.id) },
-                downloads.metadataWarning).forEach { append("\n\n$it") }
-            append("\n\nDownloaded imagery is available inside this area at zooms 12–16. You can leave this screen during download. If Android stops the app, return here to resume.")
+                downloads.metadataWarning).forEach {
+                if (isNotEmpty()) append("\n\n")
+                append(it)
+            }
+            if (isNotEmpty()) append("\n\n")
+            append("Downloaded imagery is available inside this area at zooms 12–16. You can leave this screen during download. If Android stops the app, return here to resume.")
         }
-        findViewById<ProgressBar>(R.id.offline_progress).apply {
+        findViewById<LinearProgressIndicator>(R.id.offline_progress).apply {
+            val indeterminate = status?.isRequiredResourceCountPrecise != true || status.requiredResourceCount <= 0
+            if (isIndeterminate != indeterminate) {
+                visibility = View.GONE
+                isIndeterminate = indeterminate
+            }
+            if (!indeterminate) {
+                setProgressCompat(offlinePercentage(status.completedResourceCount, status.requiredResourceCount, true) ?: 0, true)
+            }
             visibility = if (busy) View.VISIBLE else View.GONE
-            isIndeterminate = status?.isRequiredResourceCountPrecise != true || status.requiredResourceCount <= 0
-            if (!isIndeterminate && status != null) progress = offlinePercentage(status.completedResourceCount, status.requiredResourceCount, true) ?: 0
         }
         findViewById<Button>(R.id.offline_download).apply {
             text = when {
