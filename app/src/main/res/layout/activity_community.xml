@@ -7,7 +7,7 @@
         style="@style/Widget.TrailRelay.OutlinedButton"
         android:layout_width="wrap_content" android:layout_height="wrap_content"
         android:layout_marginStart="16dp" android:layout_marginTop="8dp"
-        android:text="@string/back_to_map" />
+        android:text="@string/back_to_trails" />
     <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
         android:paddingHorizontal="20dp" android:paddingTop="16dp"
         android:paddingBottom="12dp" android:text="@string/community"

@@ -18,6 +18,7 @@ data class CatalogEntry(
     val description: String? = null, val state: String? = null, val region: String? = null,
     val difficulty: String? = null, val vehicleTypes: List<String>? = null,
     val tags: List<String>? = null, val distanceMiles: Double? = null, val updatedAt: String? = null,
+    val sourceUrl: String? = null,
 )
 
 object CommunityCatalog {
@@ -62,7 +63,12 @@ object CommunityCatalog {
             }
             CatalogEntry(id, string("name", true)!!, resolveGpxUrl(string("gpxUrl", true)!!),
                 string("description"), string("state"), string("region"), string("difficulty"),
-                strings("vehicleTypes"), strings("tags"), distance, string("updatedAt"))
+                strings("vehicleTypes"), strings("tags"), distance, string("updatedAt"),
+                string("sourceUrl")?.also {
+                    val source = URI(it)
+                    require(source.scheme?.lowercase() in listOf("https", "http") &&
+                        !source.host.isNullOrBlank() && source.userInfo == null) { "Invalid sourceUrl for $id." }
+                })
         }
     }
 

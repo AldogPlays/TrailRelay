@@ -15,20 +15,15 @@ class CommunityModel(application: Application) : AndroidViewModel(application) {
     var entries: List<CatalogEntry> = emptyList(); private set
     var savedRemoteIds: Set<String> = emptySet(); private set
     var refreshing = true; private set
-    var downloading = false; private set
     var message = "Loading community catalog…"; private set
-    var downloadedId: String? = null; private set
     var query = ""
     var state: String? = null
     var difficulty: String? = null
     var vehicle: String? = null
-    var selected: CatalogEntry? = null
 
     init {
+        refreshSaved()
         worker.execute {
-            runCatching { TrailStore(getApplication()).use { store ->
-                store.list().mapNotNull { it.remoteId }.toSet()
-            } }.onSuccess { ids -> post { savedRemoteIds = ids } }
             val client = CommunityClient(getApplication())
             val cached = client.cached()
             if (cached != null) post {
@@ -44,18 +39,11 @@ class CommunityModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun download(entry: CatalogEntry) {
-        if (downloading) return
-        downloading = true
-        message = "Downloading ${entry.name}…"
-        onChange?.invoke()
+    fun refreshSaved() {
         worker.execute {
-            val result = runCatching { TrailStore(getApplication()).use { it.download(entry) } }
-            post {
-                downloading = false
-                result.onSuccess { downloadedId = it.id; message = "${it.name} saved in My Trails." }
-                    .onFailure { message = "Download failed: ${it.message ?: "Check your connection and storage space."}" }
-            }
+            runCatching { TrailStore(getApplication()).use { store ->
+                store.list().mapNotNull { it.remoteId }.toSet()
+            } }.onSuccess { ids -> post { savedRemoteIds = ids } }
         }
     }
 

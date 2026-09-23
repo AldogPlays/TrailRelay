@@ -33,6 +33,14 @@ class CommunityCatalogTest {
         assertNull(entry.description); assertNull(entry.state); assertNull(entry.region)
         assertNull(entry.difficulty); assertNull(entry.vehicleTypes); assertNull(entry.tags)
         assertNull(entry.distanceMiles); assertNull(entry.updatedAt)
+        assertNull(entry.sourceUrl)
+    }
+
+    @Test fun acceptsOptionalExternalSourceUrl() {
+        val entry = CommunityCatalog.parse(catalog(minimal.dropLast(1) +
+            ",\"sourceUrl\":\"https://example.com/trail\"}")).single()
+        assertEquals("https://example.com/trail", entry.sourceUrl)
+        invalid(catalog(minimal.dropLast(1) + ",\"sourceUrl\":\"file:///trail\"}"))
     }
 
     @Test fun rejectsUnsupportedVersionsWithUsefulError() {

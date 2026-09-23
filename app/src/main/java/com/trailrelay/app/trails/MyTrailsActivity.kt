@@ -19,6 +19,12 @@ import java.util.Locale
 
 class MyTrailsActivity : AppCompatActivity() {
     private lateinit var model: TrailLibraryModel
+    private val detail = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            setResult(RESULT_OK, result.data)
+            finish()
+        }
+    }
     private val community = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
             setResult(RESULT_OK, result.data)
@@ -44,8 +50,8 @@ class MyTrailsActivity : AppCompatActivity() {
             picker.launch(arrayOf("application/gpx+xml", "application/xml", "text/xml", "application/octet-stream"))
         }
         findViewById<ListView>(R.id.trail_list).setOnItemClickListener { _, _, position, _ ->
-            setResult(RESULT_OK, Intent().putExtra(EXTRA_TRAIL_ID, model.trails[position].id))
-            finish()
+            detail.launch(Intent(this, TrailDetailActivity::class.java)
+                .putExtra(TrailDetailActivity.EXTRA_LOCAL_ID, model.trails[position].id))
         }
         findViewById<Button>(R.id.community).setOnClickListener {
             community.launch(Intent(this, com.trailrelay.app.trails.community.CommunityActivity::class.java))
