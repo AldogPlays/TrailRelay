@@ -9,44 +9,50 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:background="@drawable/map_status_scrim"
+        android:importantForAccessibility="no" />
+
     <TextView
         android:id="@+id/status"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="top"
-        android:background="?android:attr/colorBackground"
-        android:padding="12dp"
-        android:textColor="?android:attr/textColorPrimary"
+        android:layout_margin="16dp"
+        android:background="@drawable/status_background"
+        android:elevation="4dp"
+        android:padding="16dp"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="@color/trail_on_surface"
         android:accessibilityLiveRegion="polite"
         android:visibility="gone" />
 
-    <Button
-        android:id="@+id/my_trails"
+    <LinearLayout
         android:layout_width="wrap_content"
-        android:layout_height="48dp"
+        android:layout_height="wrap_content"
         android:layout_gravity="bottom|start"
         android:layout_marginStart="16dp"
-        android:layout_marginBottom="48dp"
-        android:text="@string/my_trails" />
+        android:layout_marginBottom="16dp"
+        android:orientation="vertical">
 
-    <Button
-        android:id="@+id/community"
-        android:layout_width="wrap_content"
-        android:layout_height="48dp"
-        android:layout_gravity="bottom|start"
-        android:layout_marginStart="16dp"
-        android:layout_marginBottom="104dp"
-        android:text="@string/community" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/selected_offline"
+            style="@style/Widget.TrailRelay.MapButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone"
+            android:text="@string/download_offline" />
 
-    <Button
-        android:id="@+id/selected_offline"
-        android:layout_width="wrap_content"
-        android:layout_height="48dp"
-        android:layout_gravity="bottom|start"
-        android:layout_marginStart="16dp"
-        android:layout_marginBottom="160dp"
-        android:visibility="gone"
-        android:text="@string/download_offline" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/my_trails"
+            style="@style/Widget.TrailRelay.MapButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/my_trails" />
+    </LinearLayout>
 
     <ImageButton
         android:id="@+id/recenter"
@@ -54,11 +60,11 @@
         android:layout_height="48dp"
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="48dp"
+        android:layout_marginBottom="16dp"
         android:background="@drawable/recenter_background"
         android:contentDescription="@string/recenter"
         android:elevation="4dp"
         android:padding="12dp"
         android:src="@drawable/ic_recenter"
-        android:tint="?android:attr/textColorPrimary" />
+        android:tint="@color/trail_on_surface" />
 </FrameLayout>

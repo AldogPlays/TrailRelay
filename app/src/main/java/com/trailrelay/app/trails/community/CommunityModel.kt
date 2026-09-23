@@ -13,6 +13,7 @@ class CommunityModel(application: Application) : AndroidViewModel(application) {
     private var cleared = false
     var onChange: (() -> Unit)? = null
     var entries: List<CatalogEntry> = emptyList(); private set
+    var savedRemoteIds: Set<String> = emptySet(); private set
     var refreshing = true; private set
     var downloading = false; private set
     var message = "Loading community catalog…"; private set
@@ -25,6 +26,9 @@ class CommunityModel(application: Application) : AndroidViewModel(application) {
 
     init {
         worker.execute {
+            runCatching { TrailStore(getApplication()).use { store ->
+                store.list().mapNotNull { it.remoteId }.toSet()
+            } }.onSuccess { ids -> post { savedRemoteIds = ids } }
             val client = CommunityClient(getApplication())
             val cached = client.cached()
             if (cached != null) post {

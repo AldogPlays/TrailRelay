@@ -10,6 +10,8 @@
     <string name="import_gpx">Import GPX</string>
     <string name="back_to_map">Back to map</string>
     <string name="no_trails">No trails yet. Import a GPX file to get started.</string>
+    <string name="source_imported">Imported GPX</string>
+    <string name="source_community">Community</string>
     <string name="trail_open_failed">Unable to open this saved trail. Import its GPX again to repair the local copy.</string>
     <string name="community">Community</string>
     <string name="search_community">Search community trails</string>
@@ -17,6 +19,15 @@
     <string name="difficulty_filter">Difficulty filter</string>
     <string name="vehicle_filter">Vehicle type filter</string>
     <string name="download_trail">Download Trail</string>
+    <string name="available_to_download">Available to download</string>
+    <string name="in_my_trails">In My Trails</string>
+    <string name="update_trail">Update Trail</string>
+    <string name="no_matching_trails">No trails match this search and filters.</string>
+    <string name="no_community_trails">No community trails are available yet.</string>
+    <plurals name="trail_count">
+        <item quantity="one">%d trail</item>
+        <item quantity="other">%d trails</item>
+    </plurals>
     <string name="offline_maps">Offline Maps</string>
     <string name="download_offline">Download Offline</string>
     <string name="available_offline">Available Offline</string>

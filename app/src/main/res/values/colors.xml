@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <color name="trail_primary">#285B45</color>
+    <color name="trail_on_primary">#FFFFFF</color>
+    <color name="trail_primary_container">#C6EAD1</color>
+    <color name="trail_on_primary_container">#123525</color>
+    <color name="trail_secondary">#526351</color>
+    <color name="trail_on_secondary">#FFFFFF</color>
+    <color name="trail_surface">#FAFBF6</color>
+    <color name="trail_on_surface">#1A211C</color>
+    <color name="trail_surface_variant">#E4EAE1</color>
+    <color name="trail_on_surface_variant">#424B42</color>
+    <color name="trail_outline">#707970</color>
+    <color name="trail_error">#B3261E</color>
+    <color name="trail_on_error">#FFFFFF</color>
 </resources>

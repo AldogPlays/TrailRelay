@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
@@ -14,6 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.trailrelay.app.location.ForegroundLocation
 import com.trailrelay.app.map.AerialMap
 import com.trailrelay.app.offline.OfflineActivity
@@ -63,13 +65,18 @@ class MainActivity : AppCompatActivity() {
         MapLibre.getInstance(this)
         offline = OfflineDownloads.get(this)
         setContentView(R.layout.activity_main)
+        status = findViewById(R.id.status)
+        val statusTopMargin = (status.layoutParams as FrameLayout.LayoutParams).topMargin
+        WindowInsetsControllerCompat(window, findViewById(R.id.main)).isAppearanceLightStatusBars = false
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or
                 WindowInsetsCompat.Type.displayCutout())
-            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            view.setPadding(bars.left, 0, bars.right, bars.bottom)
+            status.layoutParams = (status.layoutParams as FrameLayout.LayoutParams).apply {
+                topMargin = statusTopMargin + bars.top
+            }
             insets
         }
-        status = findViewById(R.id.status)
         mapView = findViewById(R.id.map_view)
         mapView.onCreate(savedInstanceState)
         aerialMap = AerialMap(this, mapView, savedInstanceState) {
@@ -93,9 +100,6 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.my_trails).setOnClickListener {
             libraryRequest.launch(Intent(this, MyTrailsActivity::class.java))
-        }
-        findViewById<Button>(R.id.community).setOnClickListener {
-            libraryRequest.launch(Intent(this, com.trailrelay.app.trails.community.CommunityActivity::class.java))
         }
         findViewById<Button>(R.id.selected_offline).setOnClickListener {
             openedTrailId?.let { id ->
