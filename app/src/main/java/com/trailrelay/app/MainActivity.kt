@@ -101,6 +101,9 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.my_trails).setOnClickListener {
             libraryRequest.launch(Intent(this, MyTrailsActivity::class.java))
         }
+        findViewById<Button>(R.id.offline_library).setOnClickListener {
+            startActivity(Intent(this, OfflineActivity::class.java))
+        }
         findViewById<Button>(R.id.selected_offline).setOnClickListener {
             openedTrailId?.let { id ->
                 startActivity(Intent(this, OfflineActivity::class.java).putExtra(MyTrailsActivity.EXTRA_TRAIL_ID, id))
@@ -142,12 +145,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderOfflineAction() {
-        val available = openedTrailId?.let { offline.packageFor(it)?.complete } == true
+        val item = openedTrailId?.let(offline::packageFor)
+        val available = item?.complete == true && offline.loadError == null
         aerialMap.setOfflineTrail(openedTrailId.takeIf { available })
         findViewById<Button>(R.id.selected_offline).apply {
             visibility = if (openedTrailId != null) View.VISIBLE else View.GONE
-            text = getString(if (available)
-                R.string.available_offline else R.string.download_offline)
+            text = getString(when {
+                available -> R.string.available_offline
+                item != null -> R.string.manage_offline
+                else -> R.string.download_offline_map
+            })
         }
     }
 

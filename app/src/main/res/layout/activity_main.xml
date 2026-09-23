@@ -47,6 +47,14 @@
             android:text="@string/download_offline" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/offline_library"
+            style="@style/Widget.TrailRelay.MapButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="@string/offline_library" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/my_trails"
             style="@style/Widget.TrailRelay.MapButton"
             android:layout_width="wrap_content"

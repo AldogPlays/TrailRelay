@@ -54,6 +54,8 @@ class TrailStore(private val context: Context) : SQLiteOpenHelper(context, "trai
     fun load(trail: Trail): GpxTrack = File(context.filesDir, trail.gpxLocalPath)
         .inputStream().use(GpxParser::parse)
 
+    fun hasLocalGpx(trail: Trail): Boolean = File(context.filesDir, trail.gpxLocalPath).isFile
+
     fun import(uri: Uri): Trail {
         val directory = File(context.filesDir, "trails")
         if (!directory.isDirectory && !directory.mkdirs()) throw IOException("Cannot create trail storage.")

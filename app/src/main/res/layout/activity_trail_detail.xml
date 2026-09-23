@@ -22,6 +22,20 @@
             android:layout_height="wrap_content" android:layout_marginTop="8dp"
             android:textAppearance="?attr/textAppearanceLabelLarge"
             android:textColor="@color/trail_on_surface_variant" />
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/detail_status_chips"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" app:chipSpacingHorizontal="6dp"
+            app:chipSpacingVertical="4dp" app:singleLine="false">
+            <com.google.android.material.chip.Chip
+                android:id="@+id/detail_route_chip"
+                style="@style/Widget.TrailRelay.StatusChip"
+                android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            <com.google.android.material.chip.Chip
+                android:id="@+id/detail_aerial_chip"
+                style="@style/Widget.TrailRelay.StatusChip"
+                android:layout_width="wrap_content" android:layout_height="wrap_content" />
+        </com.google.android.material.chip.ChipGroup>
         <TextView android:id="@+id/detail_status" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:layout_marginTop="4dp"
             android:textAppearance="?attr/textAppearanceTitleMedium"

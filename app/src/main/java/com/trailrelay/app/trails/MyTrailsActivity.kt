@@ -13,12 +13,18 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.ViewModelProvider
+import com.google.android.material.chip.Chip
 import com.trailrelay.app.R
+import com.trailrelay.app.offline.OfflineDownloads
 import com.trailrelay.app.trails.TrailSource
+import org.maplibre.android.MapLibre
 import java.util.Locale
 
 class MyTrailsActivity : AppCompatActivity() {
     private lateinit var model: TrailLibraryModel
+    private lateinit var downloads: OfflineDownloads
+    private lateinit var trailAdapter: ArrayAdapter<Trail>
+    private val offlineListener: () -> Unit = { render() }
     private val detail = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
             setResult(RESULT_OK, result.data)
@@ -38,6 +44,8 @@ class MyTrailsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        MapLibre.getInstance(this)
+        downloads = OfflineDownloads.get(this)
         setContentView(R.layout.activity_my_trails)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.library)) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
@@ -45,6 +53,24 @@ class MyTrailsActivity : AppCompatActivity() {
             insets
         }
         model = ViewModelProvider(this)[TrailLibraryModel::class.java]
+        trailAdapter = object : ArrayAdapter<Trail>(this, R.layout.trail_list_item,
+            R.id.trail_row_name, mutableListOf()) {
+            override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View {
+                return super.getView(position, convertView, parent).apply {
+                    val trail = getItem(position)!!
+                    findViewById<TextView>(R.id.trail_row_name).text = trail.name
+                    findViewById<TextView>(R.id.trail_row_meta).text =
+                        "${getString(if (trail.source == TrailSource.COMMUNITY) R.string.source_community else R.string.source_imported)} · " +
+                            String.format(Locale.getDefault(), "%.2f mi", trail.distanceMeters / 1609.344)
+                    findViewById<TextView>(R.id.trail_row_location).visibility = View.GONE
+                    findViewById<Chip>(R.id.trail_row_route_chip).showRouteStatus(
+                        if (trail.id in model.availableRouteIds) RouteChipState.SAVED else RouteChipState.MISSING)
+                    findViewById<Chip>(R.id.trail_row_aerial_chip).showAerialStatus(
+                        AerialChipState.fromImagery(imageryState(downloads, trail.id)))
+                }
+            }
+        }
+        findViewById<ListView>(R.id.trail_list).adapter = trailAdapter
         findViewById<Button>(R.id.back_to_map).setOnClickListener { finish() }
         findViewById<Button>(R.id.import_gpx).setOnClickListener {
             picker.launch(arrayOf("application/gpx+xml", "application/xml", "text/xml", "application/octet-stream"))
@@ -67,21 +93,11 @@ class MyTrailsActivity : AppCompatActivity() {
             ?: if (!model.busy && model.trails.isEmpty()) getString(R.string.no_trails) else ""
         findViewById<ListView>(R.id.trail_list).apply {
             isEnabled = !model.busy
-            adapter = object : ArrayAdapter<Trail>(this@MyTrailsActivity,
-                R.layout.trail_list_item, R.id.trail_row_name, model.trails) {
-                override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View {
-                    return super.getView(position, convertView, parent).apply {
-                        val trail = getItem(position)!!
-                        findViewById<TextView>(R.id.trail_row_name).text = trail.name
-                        findViewById<TextView>(R.id.trail_row_meta).text =
-                            "${getString(if (trail.source == TrailSource.COMMUNITY) R.string.source_community else R.string.source_imported)} · " +
-                                String.format(Locale.getDefault(), "%.2f mi", trail.distanceMeters / 1609.344)
-                        findViewById<TextView>(R.id.trail_row_detail).apply {
-                            text = trail.description.orEmpty()
-                            visibility = if (trail.description.isNullOrBlank()) View.GONE else View.VISIBLE
-                        }
-                    }
-                }
+            if ((0 until trailAdapter.count).map { trailAdapter.getItem(it) } != model.trails) {
+                trailAdapter.clear()
+                trailAdapter.addAll(model.trails)
+            } else {
+                trailAdapter.notifyDataSetChanged()
             }
         }
     }
@@ -89,6 +105,18 @@ class MyTrailsActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         model.refresh()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        downloads.listeners.add(offlineListener)
+        downloads.refresh()
+        render()
+    }
+
+    override fun onStop() {
+        downloads.listeners.remove(offlineListener)
+        super.onStop()
     }
 
     override fun onDestroy() {

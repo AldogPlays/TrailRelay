@@ -16,13 +16,17 @@ import androidx.lifecycle.ViewModelProvider
 import com.trailrelay.app.R
 import com.trailrelay.app.offline.OfflineActivity
 import com.trailrelay.app.offline.OfflineDownloads
+import com.trailrelay.app.offline.OfflineLibraryState
 import com.google.android.material.progressindicator.LinearProgressIndicator
+import com.google.android.material.chip.Chip
+import com.trailrelay.app.trails.community.communityTrailId
 import org.maplibre.android.MapLibre
 import java.util.Locale
 
 class TrailDetailActivity : AppCompatActivity() {
     private lateinit var model: TrailDetailModel
     private lateinit var downloads: OfflineDownloads
+    private lateinit var trailStore: TrailStore
     private val offlineListener: () -> Unit = { render() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,6 +40,7 @@ class TrailDetailActivity : AppCompatActivity() {
             insets
         }
         downloads = OfflineDownloads.get(this)
+        trailStore = TrailStore(applicationContext)
         model = ViewModelProvider(this)[TrailDetailModel::class.java]
         model.initialize(intent.getStringExtra(EXTRA_LOCAL_ID), intent.getStringExtra(EXTRA_CATALOG_ID))
         findViewById<Button>(R.id.detail_back).setOnClickListener { finish() }
@@ -47,8 +52,17 @@ class TrailDetailActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.detail_offline_action).setOnClickListener {
             model.trail?.let { trail ->
-                startActivity(Intent(this, OfflineActivity::class.java)
-                    .putExtra(MyTrailsActivity.EXTRA_TRAIL_ID, trail.id))
+                val item = downloads.packageFor(trail.id)
+                when {
+                    downloads.loadError != null -> startActivity(Intent(this, OfflineActivity::class.java)
+                        .putExtra(MyTrailsActivity.EXTRA_TRAIL_ID, trail.id))
+                    item == null -> downloads.start(trail)
+                    item.libraryState == OfflineLibraryState.INCOMPLETE ||
+                        item.libraryState == OfflineLibraryState.FAILED ->
+                        downloads.resume(item)
+                    else -> startActivity(Intent(this, OfflineActivity::class.java)
+                        .putExtra(MyTrailsActivity.EXTRA_TRAIL_ID, trail.id))
+                }
             }
         }
         findViewById<Button>(R.id.detail_source_action).setOnClickListener {
@@ -75,11 +89,24 @@ class TrailDetailActivity : AppCompatActivity() {
         }
         findViewById<TextView>(R.id.detail_status).text = when {
             model.downloading -> getString(R.string.downloading_trail)
-            trail != null -> getString(R.string.saved_on_device)
-            entry != null -> getString(R.string.available_to_download)
             model.loading -> getString(R.string.loading_trail)
             else -> ""
         }
+        findViewById<TextView>(R.id.detail_status).visibility =
+            if (model.downloading || model.loading) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.detail_status_chips).visibility =
+            if (trail != null || entry != null) View.VISIBLE else View.GONE
+        findViewById<Chip>(R.id.detail_route_chip).showRouteStatus(when {
+            model.downloading || model.loading -> RouteChipState.CHECKING
+            trail != null && trailStore.hasLocalGpx(trail) -> RouteChipState.SAVED
+            trail != null -> RouteChipState.MISSING
+            entry != null -> RouteChipState.NOT_SAVED
+            else -> RouteChipState.ERROR
+        })
+        val statusTrailId = trail?.id ?: entry?.id?.let(::communityTrailId)
+        findViewById<Chip>(R.id.detail_aerial_chip).showAerialStatus(
+            AerialChipState.fromImagery(statusTrailId?.let { imageryState(downloads, it) }
+                ?: ImageryState.CHECKING))
         findViewById<TextView>(R.id.detail_description).apply {
             text = entry?.description ?: trail?.description
             visibility = if (text.isNullOrBlank()) View.GONE else View.VISIBLE
@@ -101,7 +128,7 @@ class TrailDetailActivity : AppCompatActivity() {
         }
         findViewById<LinearProgressIndicator>(R.id.detail_progress).visibility =
             if (model.loading || model.downloading) View.VISIBLE else View.GONE
-        val imagery = imageryState(trail)
+        val imagery = trail?.let { imageryState(downloads, it.id) } ?: ImageryState.CHECKING
         val actions = trailDetailActions(trail != null, model.downloading, imagery)
         findViewById<Button>(R.id.detail_primary).apply {
             text = getString(if (trail != null) R.string.open_map else R.string.download_trail)
@@ -110,15 +137,15 @@ class TrailDetailActivity : AppCompatActivity() {
         }
         findViewById<TextView>(R.id.detail_offline_state).apply {
             text = if (trail == null) "" else when (imagery) {
-                ImageryState.CHECKING -> getString(R.string.offline_checking)
-                ImageryState.NONE -> getString(R.string.offline_not_downloaded)
-                ImageryState.PREPARING -> getString(R.string.offline_preparing)
-                ImageryState.DOWNLOADING -> getString(R.string.offline_downloading)
-                ImageryState.INCOMPLETE -> getString(R.string.offline_incomplete)
-                ImageryState.COMPLETE -> getString(R.string.available_offline)
+                ImageryState.CHECKING, ImageryState.PREPARING -> ""
+                ImageryState.NONE -> getString(R.string.detail_aerial_absent)
+                ImageryState.DOWNLOADING -> getString(R.string.detail_aerial_downloading)
+                ImageryState.INCOMPLETE -> getString(R.string.detail_aerial_incomplete)
+                ImageryState.COMPLETE -> getString(R.string.detail_aerial_complete)
                 ImageryState.FAILED -> downloads.packageFor(trail.id)?.error ?: downloads.errorFor(trail.id)
                     ?: downloads.loadError ?: getString(R.string.offline_failed)
             }
+            visibility = if (text.isBlank()) View.GONE else View.VISIBLE
         }
         findViewById<View>(R.id.detail_offline_card).visibility = if (trail == null) View.GONE else View.VISIBLE
         findViewById<Button>(R.id.detail_offline_action).apply {
@@ -126,8 +153,10 @@ class TrailDetailActivity : AppCompatActivity() {
             text = getString(when (imagery) {
                 ImageryState.COMPLETE, ImageryState.DOWNLOADING, ImageryState.PREPARING -> R.string.manage_offline
                 ImageryState.INCOMPLETE -> R.string.resume_offline
-                ImageryState.FAILED -> R.string.manage_offline
-                else -> R.string.download_offline
+                ImageryState.FAILED -> if (downloads.loadError != null) R.string.manage_offline
+                    else if (trail?.let { downloads.packageFor(it.id) } == null)
+                    R.string.download_offline_map else R.string.resume_offline
+                else -> R.string.download_offline_map
             })
         }
         findViewById<Button>(R.id.detail_source_action).visibility =
@@ -147,21 +176,6 @@ class TrailDetailActivity : AppCompatActivity() {
         parent.addView(row)
     }
 
-    private fun imageryState(trail: Trail?): ImageryState {
-        if (trail == null || !downloads.loaded && downloads.loadError == null) return ImageryState.CHECKING
-        if (downloads.loadError != null) return ImageryState.FAILED
-        val item = downloads.packageFor(trail.id)
-        return when {
-            item?.deleting == true || downloads.isCreating(trail.id) -> ImageryState.PREPARING
-            item?.complete == true -> ImageryState.COMPLETE
-            item?.error != null || downloads.errorFor(trail.id) != null -> ImageryState.FAILED
-            item?.active == true -> ImageryState.DOWNLOADING
-            item != null && item.status == null -> ImageryState.CHECKING
-            item != null -> ImageryState.INCOMPLETE
-            else -> ImageryState.NONE
-        }
-    }
-
     override fun onStart() {
         super.onStart()
         downloads.listeners.add(offlineListener)
@@ -175,6 +189,7 @@ class TrailDetailActivity : AppCompatActivity() {
     }
     override fun onDestroy() {
         model.onChange = null
+        trailStore.close()
         super.onDestroy()
     }
 
