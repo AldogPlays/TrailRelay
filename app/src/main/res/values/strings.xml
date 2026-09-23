@@ -35,4 +35,25 @@
     <string name="pause_offline">Pause Download</string>
     <string name="retry_offline">Retry</string>
     <string name="remove_offline">Remove Offline Maps</string>
+    <string name="trail_details">Trail Details</string>
+    <string name="back_to_trails">Back to trails</string>
+    <string name="back">Back</string>
+    <string name="open_map">Open Map</string>
+    <string name="saved_on_device">Saved on this device</string>
+    <string name="loading_trail">Loading trail…</string>
+    <string name="downloading_trail">Downloading trail…</string>
+    <string name="distance_label">Distance</string>
+    <string name="difficulty_label">Difficulty</string>
+    <string name="state_label">State</string>
+    <string name="region_label">County / region</string>
+    <string name="vehicle_types_label">Vehicle types</string>
+    <string name="offline_checking">Checking saved imagery…</string>
+    <string name="offline_not_downloaded">Imagery not downloaded</string>
+    <string name="offline_preparing">Preparing offline imagery…</string>
+    <string name="offline_downloading">Downloading aerial imagery…</string>
+    <string name="offline_incomplete">Imagery incomplete; resume to finish</string>
+    <string name="offline_failed">Unable to check offline imagery</string>
+    <string name="manage_offline">Manage Offline Maps</string>
+    <string name="view_source">View Source</string>
+    <string name="no_browser">No app is available to open this link.</string>
 </resources>

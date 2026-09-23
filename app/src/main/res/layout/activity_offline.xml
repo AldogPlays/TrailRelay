@@ -12,7 +12,7 @@
         <com.google.android.material.button.MaterialButton android:id="@+id/offline_back"
             style="@style/Widget.TrailRelay.OutlinedButton"
             android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="@string/back_to_map" />
+            android:text="@string/back" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="16dp" android:text="@string/offline_maps"
             android:textAppearance="?attr/textAppearanceLabelLarge"

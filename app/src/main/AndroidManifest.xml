@@ -20,6 +20,7 @@
         android:theme="@style/Theme.TrailRelay">
         <activity android:name=".trails.community.CommunityActivity" android:exported="false" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".trails.MyTrailsActivity" android:exported="false" />
+        <activity android:name=".trails.TrailDetailActivity" android:exported="false" />
         <activity android:name=".offline.OfflineActivity" android:exported="false" />
         <activity
             android:name=".MainActivity"

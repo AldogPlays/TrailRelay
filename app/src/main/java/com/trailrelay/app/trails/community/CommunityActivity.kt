@@ -5,21 +5,27 @@ import android.os.Bundle
 import android.view.View
 import android.widget.*
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.ViewModelProvider
 import com.trailrelay.app.R
-import com.trailrelay.app.trails.MyTrailsActivity
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.trailrelay.app.trails.TrailDetailActivity
 import com.google.android.material.progressindicator.LinearProgressIndicator
 
 class CommunityActivity : AppCompatActivity() {
     private lateinit var model: CommunityModel
     private var visibleEntries = emptyList<CatalogEntry>()
-    private var dialog: AlertDialog? = null
+    private val detail = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            setResult(RESULT_OK, result.data)
+            finish()
+        } else {
+            model.refreshSaved()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,11 +43,11 @@ class CommunityActivity : AppCompatActivity() {
             doAfterTextChanged { model.query = it.toString(); renderList() }
         }
         findViewById<ListView>(R.id.community_list).setOnItemClickListener { _, _, position, _ ->
-            showDetails(visibleEntries[position])
+            detail.launch(Intent(this, TrailDetailActivity::class.java)
+                .putExtra(TrailDetailActivity.EXTRA_CATALOG_ID, visibleEntries[position].id))
         }
         model.onChange = ::render
         render()
-        model.selected?.let(::showDetails)
     }
 
     private fun filter(id: Int, label: String, values: List<String>, selected: String?, update: (String?) -> Unit) {
@@ -63,17 +69,11 @@ class CommunityActivity : AppCompatActivity() {
     }
 
     private fun render() {
-        model.downloadedId?.let {
-            setResult(RESULT_OK, Intent().putExtra(MyTrailsActivity.EXTRA_TRAIL_ID, it))
-            finish()
-            return
-        }
         filter(R.id.state_filter, "All states", model.entries.mapNotNull { it.state }, model.state) { model.state = it }
         filter(R.id.difficulty_filter, "All difficulties", model.entries.mapNotNull { it.difficulty }, model.difficulty) { model.difficulty = it }
         filter(R.id.vehicle_filter, "All vehicle types", VEHICLE_TYPES + model.entries.flatMap { it.vehicleTypes.orEmpty() }, model.vehicle) { model.vehicle = it }
         findViewById<LinearProgressIndicator>(R.id.community_progress).visibility =
-            if (model.refreshing || model.downloading) View.VISIBLE else View.GONE
-        findViewById<ListView>(R.id.community_list).isEnabled = !model.downloading
+            if (model.refreshing) View.VISIBLE else View.GONE
         renderList()
     }
 
@@ -103,28 +103,8 @@ class CommunityActivity : AppCompatActivity() {
         }
     }
 
-    private fun showDetails(entry: CatalogEntry) {
-        model.selected = entry
-        val details = listOfNotNull(
-            entry.description, "Catalog ID: ${entry.id}",
-            entry.state?.let { "State: $it" }, entry.region?.let { "Region: $it" },
-            entry.difficulty?.let { "Difficulty: $it" },
-            entry.vehicleTypes?.let { "Vehicle types: ${it.joinToString(", ")}" },
-            entry.tags?.let { "Tags: ${it.joinToString(", ")}" },
-            entry.distanceMiles?.let { "Catalog distance: $it mi" },
-            entry.updatedAt?.let { "Updated: $it" }, "GPX: ${entry.gpxUrl}"
-        ).joinToString("\n\n")
-        dialog = MaterialAlertDialogBuilder(this).setTitle(entry.name).setMessage(details)
-            .setPositiveButton(if (entry.id in model.savedRemoteIds) R.string.update_trail else R.string.download_trail) { _, _ ->
-                model.selected = null; model.download(entry)
-            }
-            .setNegativeButton(android.R.string.cancel) { _, _ -> model.selected = null }
-            .setOnCancelListener { model.selected = null }.show()
-    }
-
     override fun onDestroy() {
         model.onChange = null
-        dialog?.dismiss()
         super.onDestroy()
     }
 }

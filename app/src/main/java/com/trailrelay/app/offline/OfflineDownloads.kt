@@ -123,6 +123,7 @@ class OfflineDownloads private constructor(context: Context) {
         if (item !in packages || item.deleting) return
         val wasComplete = item.complete
         item.status = status
+        if (!item.complete && item.error == null) item.active = status.downloadState == OfflineRegion.STATE_ACTIVE
         if (item.complete) {
             if (!wasComplete) Log.i(TAG, "Complete: trail ${item.metadata.trailId}, region ${item.region.id}, " +
                 "${status.completedTileCount} tiles, ${status.completedResourceSize} bytes")
