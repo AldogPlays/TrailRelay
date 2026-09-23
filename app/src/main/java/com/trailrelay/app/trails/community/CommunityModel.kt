@@ -14,6 +14,8 @@ class CommunityModel(application: Application) : AndroidViewModel(application) {
     var onChange: (() -> Unit)? = null
     var entries: List<CatalogEntry> = emptyList(); private set
     var savedRemoteIds: Set<String> = emptySet(); private set
+    var savedLoaded = false; private set
+    var savedError = false; private set
     var refreshing = true; private set
     var message = "Loading community catalog…"; private set
     var query = ""
@@ -42,8 +44,15 @@ class CommunityModel(application: Application) : AndroidViewModel(application) {
     fun refreshSaved() {
         worker.execute {
             runCatching { TrailStore(getApplication()).use { store ->
-                store.list().mapNotNull { it.remoteId }.toSet()
-            } }.onSuccess { ids -> post { savedRemoteIds = ids } }
+                store.list().filter(store::hasLocalGpx).mapNotNull { it.remoteId }.toSet()
+            } }.onSuccess { ids -> post {
+                savedRemoteIds = ids
+                savedLoaded = true
+                savedError = false
+            } }.onFailure { post {
+                savedLoaded = true
+                savedError = true
+            } }
         }
     }
 

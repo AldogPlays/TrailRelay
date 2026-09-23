@@ -9,7 +9,7 @@ import org.maplibre.android.offline.*
 
 /** Main-thread owner using only application context. Activities subscribe; they never own downloads. */
 class OfflineDownloads private constructor(context: Context) {
-    class Package(val region: OfflineRegion, val metadata: OfflineMetadata) {
+    class Package(val region: OfflineRegion, val metadata: OfflineMetadata?) {
         var status: OfflineRegionStatus? = null
         var active = false
         var deleting = false
@@ -18,6 +18,8 @@ class OfflineDownloads private constructor(context: Context) {
         val complete get() = status?.let {
             it.isComplete && offlineComplete(it.completedResourceCount, it.requiredResourceCount, it.isRequiredResourceCountPrecise)
         } == true
+        val libraryState get() = offlineLibraryState(status != null, complete,
+            status?.downloadState == OfflineRegion.STATE_ACTIVE, active, error != null)
     }
 
     private val appContext = context.applicationContext
@@ -30,33 +32,41 @@ class OfflineDownloads private constructor(context: Context) {
         private set
     var loadError: String? = null
         private set
-    var metadataWarning: String? = null
-        private set
     private var loading = false
 
     init { reload() }
 
-    fun packageFor(id: String): Package? = packages.filter { it.metadata.belongsTo(id) }
-        .sortedWith(compareByDescending<Package> { it.complete }.thenByDescending { it.metadata.createdAt })
+    fun allPackages(): List<Package> = packages.sortedWith(compareByDescending<Package> { it.metadata?.createdAt ?: 0L }
+        .thenBy { it.region.id })
+    fun packageFor(id: String): Package? = packages.filter { it.metadata?.belongsTo(id) == true }
+        .sortedWith(compareByDescending<Package> { it.complete }.thenByDescending { it.metadata?.createdAt ?: 0L })
         .firstOrNull()
     fun isCreating(id: String) = id in creating
     fun errorFor(id: String) = errors[id]
     private fun changed() = listeners.toList().forEach { it() }
 
     fun reload() {
-        if (loading || loaded) return
+        if (loading) return
         loading = true
         loadError = null
         manager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
             override fun onList(offlineRegions: Array<OfflineRegion>?) {
+                val presentIds = offlineRegions.orEmpty().map { it.id }.toSet()
+                val staleIds = staleRegionIds(packages.map { it.region.id }.toSet(), presentIds)
+                packages.removeAll { it.region.id in staleIds && !it.deleting }
                 offlineRegions.orEmpty().forEach { region ->
+                    val existing = packages.firstOrNull { it.region.id == region.id }
+                    if (existing != null) {
+                        if (!existing.deleting) queryStatus(existing)
+                        return@forEach
+                    }
                     val metadata = OfflineMetadata.decode(region.metadata)
                     val definition = region.definition as? OfflineTilePyramidRegionDefinition
                     if (metadata == null || definition?.styleURL != AERIAL_STYLE_URI ||
                         definition.minZoom != metadata.minZoom.toDouble() ||
                         definition.maxZoom != metadata.maxZoom.toDouble()) {
-                        Log.w(TAG, "Ignoring region ${region.id}: missing, incompatible or corrupt metadata/definition")
-                        metadataWarning = "Some saved map coverage could not be identified. It has been left intact."
+                        Log.w(TAG, "Unrecognized region ${region.id}: missing, incompatible or corrupt metadata/definition")
+                        queryStatus(attach(region, null))
                     } else queryStatus(attach(region, metadata))
                 }
                 loading = false
@@ -73,11 +83,9 @@ class OfflineDownloads private constructor(context: Context) {
     }
 
     /** Query persistent native status again when returning to the screen. */
-    fun refresh() {
-        if (!loaded) reload() else packages.filterNot { it.deleting }.forEach(::queryStatus)
-    }
+    fun refresh() = reload()
 
-    private fun attach(region: OfflineRegion, metadata: OfflineMetadata): Package {
+    private fun attach(region: OfflineRegion, metadata: OfflineMetadata?): Package {
         val item = Package(region, metadata)
         packages.add(item)
         region.setObserver(object : OfflineRegion.OfflineRegionObserver {
@@ -125,7 +133,7 @@ class OfflineDownloads private constructor(context: Context) {
         item.status = status
         if (!item.complete && item.error == null) item.active = status.downloadState == OfflineRegion.STATE_ACTIVE
         if (item.complete) {
-            if (!wasComplete) Log.i(TAG, "Complete: trail ${item.metadata.trailId}, region ${item.region.id}, " +
+            if (!wasComplete) Log.i(TAG, "Complete: trail ${item.metadata?.trailId}, region ${item.region.id}, " +
                 "${status.completedTileCount} tiles, ${status.completedResourceSize} bytes")
             item.error = null
             if (item.active || status.downloadState == OfflineRegion.STATE_ACTIVE) {
@@ -138,7 +146,7 @@ class OfflineDownloads private constructor(context: Context) {
 
     private fun fail(item: Package, message: String, technical: String) {
         if (item !in packages || item.deleting) return
-        Log.e(TAG, "Trail ${item.metadata.trailId}, region ${item.region.id}: $technical")
+        Log.e(TAG, "Trail ${item.metadata?.trailId}, region ${item.region.id}: $technical")
         item.error = message
         item.stateRevision++
         item.active = false
@@ -147,10 +155,14 @@ class OfflineDownloads private constructor(context: Context) {
     }
 
     fun start(trail: Trail) {
-        if (!loaded || isCreating(trail.id)) return
+        if (!loaded || loadError != null || isCreating(trail.id)) return
         val existing = packageFor(trail.id)
         if (existing != null && (existing.complete || existing.active || existing.deleting || existing.status == null)) return
         errors.remove(trail.id)
+        if (existing != null) {
+            activate(existing)
+            return
+        }
         val bounds = try {
             OfflineCoverage.padded(CoverageBounds(trail.minLatitude, trail.minLongitude, trail.maxLatitude, trail.maxLongitude))
                 .also {
@@ -164,10 +176,6 @@ class OfflineDownloads private constructor(context: Context) {
             changed()
             return
         }
-        if (existing != null) {
-            activate(existing)
-            return
-        }
         creating.add(trail.id)
         changed()
         val definition = OfflineTilePyramidRegionDefinition(AERIAL_STYLE_URI,
@@ -179,7 +187,8 @@ class OfflineDownloads private constructor(context: Context) {
             manager.createOfflineRegion(definition, metadata.encode(), object : OfflineManager.CreateOfflineRegionCallback {
                 override fun onCreate(offlineRegion: OfflineRegion) {
                     creating.remove(trail.id)
-                    activate(attach(offlineRegion, metadata))
+                    val item = packages.firstOrNull { it.region.id == offlineRegion.id } ?: attach(offlineRegion, metadata)
+                    activate(item)
                 }
                 override fun onError(error: String) = creationFailed(trail.id, error)
             })
@@ -196,7 +205,7 @@ class OfflineDownloads private constructor(context: Context) {
     }
 
     private fun activate(item: Package) {
-        if (item.complete || item.active || item.deleting) return
+        if (item !in packages || item.metadata == null || item.complete || item.active || item.deleting) return
         item.error = null
         item.stateRevision++
         try {
@@ -209,7 +218,7 @@ class OfflineDownloads private constructor(context: Context) {
                 activate = {
                     item.region.setDownloadState(OfflineRegion.STATE_ACTIVE)
                     item.active = true
-                    Log.i(TAG, "Requested STATE_ACTIVE: trail ${item.metadata.trailId}, region ${item.region.id}")
+                    Log.i(TAG, "Requested STATE_ACTIVE: trail ${item.metadata?.trailId}, region ${item.region.id}")
                 },
                 requestStatus = { queryStatus(item, expectActive = true) })
         } catch (error: Exception) {
@@ -218,7 +227,12 @@ class OfflineDownloads private constructor(context: Context) {
         changed()
     }
 
+    fun resume(item: Package) {
+        if (canResumeOffline(item.libraryState, item.metadata != null)) activate(item)
+    }
+
     fun pause(item: Package) {
+        if (item !in packages || item.deleting) return
         item.stateRevision++
         item.active = false
         item.region.setDownloadState(OfflineRegion.STATE_INACTIVE)
@@ -227,7 +241,7 @@ class OfflineDownloads private constructor(context: Context) {
     }
 
     fun delete(item: Package) {
-        if (item.deleting) return
+        if (item !in packages || item.deleting) return
         pause(item)
         item.deleting = true
         changed()
@@ -241,6 +255,7 @@ class OfflineDownloads private constructor(context: Context) {
                 item.deleting = false
                 item.error = "Unable to remove offline coverage. Try again."
                 changed()
+                reload() // A region removed elsewhere may already be absent.
             }
         })
     }

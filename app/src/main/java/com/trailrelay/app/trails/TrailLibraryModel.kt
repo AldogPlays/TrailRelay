@@ -13,6 +13,8 @@ class TrailLibraryModel(application: Application) : AndroidViewModel(application
     private val main = Handler(Looper.getMainLooper())
     var trails: List<Trail> = emptyList()
         private set
+    var availableRouteIds: Set<String> = emptySet()
+        private set
     var busy = false
         private set
     var message: String? = null
@@ -37,14 +39,16 @@ class TrailLibraryModel(application: Application) : AndroidViewModel(application
             val result = runCatching {
                 TrailStore(getApplication()).use { store ->
                     val imported = uri?.let(store::import)
-                    store.list() to imported
+                    val trails = store.list()
+                    Triple(trails, trails.filter(store::hasLocalGpx).map(Trail::id).toSet(), imported)
                 }
             }
             main.post {
                 if (!cleared) {
                     busy = false
-                    result.onSuccess { (items, imported) ->
+                    result.onSuccess { (items, availableIds, imported) ->
                         trails = items
+                        availableRouteIds = availableIds
                         message = imported?.let { "${it.name} is saved in My Trails." }
                     }.onFailure {
                         message = if (it is GpxException) it.message else

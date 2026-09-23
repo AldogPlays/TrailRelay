@@ -44,6 +44,18 @@
         <item name="boxCornerRadiusBottomEnd">@dimen/trail_corner_radius</item>
     </style>
 
+    <style name="Widget.TrailRelay.StatusChip" parent="Widget.Material3.Chip.Assist">
+        <item name="android:minHeight">0dp</item>
+        <item name="chipMinHeight">30dp</item>
+        <item name="ensureMinTouchTargetSize">false</item>
+        <item name="chipIconSize">18dp</item>
+        <item name="chipStartPadding">8dp</item>
+        <item name="chipEndPadding">8dp</item>
+        <item name="textStartPadding">4dp</item>
+        <item name="textEndPadding">0dp</item>
+        <item name="android:textAppearance">?attr/textAppearanceLabelMedium</item>
+    </style>
+
     <style name="ThemeOverlay.TrailRelay.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="alertDialogStyle">@style/MaterialAlertDialog.TrailRelay</item>
     </style>

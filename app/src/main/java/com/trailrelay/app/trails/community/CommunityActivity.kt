@@ -12,12 +12,24 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.ViewModelProvider
 import com.trailrelay.app.R
+import com.trailrelay.app.offline.OfflineDownloads
 import com.trailrelay.app.trails.TrailDetailActivity
+import com.trailrelay.app.trails.AerialChipState
+import com.trailrelay.app.trails.RouteChipState
+import com.trailrelay.app.trails.fromImagery
+import com.trailrelay.app.trails.imageryState
+import com.trailrelay.app.trails.showAerialStatus
+import com.trailrelay.app.trails.showRouteStatus
 import com.google.android.material.progressindicator.LinearProgressIndicator
+import com.google.android.material.chip.Chip
+import org.maplibre.android.MapLibre
 
 class CommunityActivity : AppCompatActivity() {
     private lateinit var model: CommunityModel
+    private lateinit var downloads: OfflineDownloads
+    private val offlineListener: () -> Unit = { renderList() }
     private var visibleEntries = emptyList<CatalogEntry>()
+    private lateinit var communityAdapter: ArrayAdapter<CatalogEntry>
     private val detail = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
             setResult(RESULT_OK, result.data)
@@ -30,6 +42,8 @@ class CommunityActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        MapLibre.getInstance(this)
+        downloads = OfflineDownloads.get(this)
         setContentView(R.layout.activity_community)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.community_root)) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
@@ -37,6 +51,30 @@ class CommunityActivity : AppCompatActivity() {
             insets
         }
         model = ViewModelProvider(this)[CommunityModel::class.java]
+        communityAdapter = object : ArrayAdapter<CatalogEntry>(this, R.layout.trail_list_item,
+            R.id.trail_row_name, mutableListOf()) {
+            override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View =
+                super.getView(position, convertView, parent).apply {
+                    val entry = getItem(position)!!
+                    findViewById<TextView>(R.id.trail_row_name).text = entry.name
+                    findViewById<TextView>(R.id.trail_row_meta).text =
+                        listOfNotNull(entry.distanceMiles?.let { "%.1f mi".format(it) },
+                            entry.difficulty).joinToString(" · ")
+                    findViewById<TextView>(R.id.trail_row_location).apply {
+                        text = listOfNotNull(entry.state, entry.region).joinToString(" · ")
+                        visibility = if (text.isBlank()) View.GONE else View.VISIBLE
+                    }
+                    findViewById<Chip>(R.id.trail_row_route_chip).showRouteStatus(when {
+                        model.savedError -> RouteChipState.ERROR
+                        !model.savedLoaded -> RouteChipState.CHECKING
+                        entry.id in model.savedRemoteIds -> RouteChipState.SAVED
+                        else -> RouteChipState.NOT_SAVED
+                    })
+                    findViewById<Chip>(R.id.trail_row_aerial_chip).showAerialStatus(
+                        AerialChipState.fromImagery(imageryState(downloads, communityTrailId(entry.id))))
+                }
+        }
+        findViewById<ListView>(R.id.community_list).adapter = communityAdapter
         findViewById<Button>(R.id.community_back).setOnClickListener { finish() }
         findViewById<EditText>(R.id.community_search).apply {
             setText(model.query)
@@ -85,22 +123,25 @@ class CommunityActivity : AppCompatActivity() {
             visibleEntries.isEmpty() -> "\n${getString(R.string.no_community_trails)}"
             else -> "\n${resources.getQuantityString(R.plurals.trail_count, visibleEntries.size, visibleEntries.size)}"
         }
-        findViewById<ListView>(R.id.community_list).adapter = object : ArrayAdapter<CatalogEntry>(this,
-            R.layout.trail_list_item, R.id.trail_row_name, visibleEntries) {
-            override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View =
-                super.getView(position, convertView, parent).apply {
-                    val entry = getItem(position)!!
-                    findViewById<TextView>(R.id.trail_row_name).text = entry.name
-                    findViewById<TextView>(R.id.trail_row_meta).text =
-                        listOfNotNull(entry.distanceMiles?.let { "%.1f mi".format(it) },
-                            entry.difficulty, getString(if (entry.id in model.savedRemoteIds)
-                                R.string.in_my_trails else R.string.available_to_download)).joinToString(" · ")
-                    findViewById<TextView>(R.id.trail_row_detail).apply {
-                        text = listOfNotNull(entry.state, entry.region).joinToString(" · ")
-                        visibility = if (text.isBlank()) View.GONE else View.VISIBLE
-                    }
-                }
+        if ((0 until communityAdapter.count).map { communityAdapter.getItem(it) } != visibleEntries) {
+            communityAdapter.clear()
+            communityAdapter.addAll(visibleEntries)
+        } else {
+            communityAdapter.notifyDataSetChanged()
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        downloads.listeners.add(offlineListener)
+        downloads.refresh()
+        model.refreshSaved()
+        renderList()
+    }
+
+    override fun onStop() {
+        downloads.listeners.remove(offlineListener)
+        super.onStop()
     }
 
     override fun onDestroy() {

@@ -3,67 +3,52 @@
     android:id="@+id/offline_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true" android:background="@color/trail_surface">
+    android:fillViewport="true"
+    android:background="@color/trail_surface">
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="16dp">
-        <com.google.android.material.button.MaterialButton android:id="@+id/offline_back"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/offline_back"
             style="@style/Widget.TrailRelay.OutlinedButton"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:text="@string/back" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="16dp" android:text="@string/offline_maps"
-            android:textAppearance="?attr/textAppearanceLabelLarge"
-            android:textColor="@color/trail_primary" />
-        <TextView android:id="@+id/offline_title" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="4dp"
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/offline_library"
             android:textAppearance="?attr/textAppearanceHeadlineMedium"
             android:accessibilityHeading="true" />
-        <TextView android:id="@+id/offline_details" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="12dp"
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/offline_library_intro"
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="@color/trail_on_surface_variant" />
-        <com.google.android.material.card.MaterialCardView
-            xmlns:app="http://schemas.android.com/apk/res-auto"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="20dp" android:layout_marginBottom="12dp"
-            app:cardBackgroundColor="@color/trail_surface_variant"
-            app:cardCornerRadius="@dimen/trail_corner_radius" app:cardElevation="0dp">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:orientation="vertical" android:padding="16dp">
-                <TextView android:id="@+id/offline_state" android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textAppearance="?attr/textAppearanceTitleMedium"
-                    android:textColor="@color/trail_on_surface"
-                    android:accessibilityLiveRegion="polite" />
-                <com.google.android.material.progressindicator.LinearProgressIndicator
-                    android:id="@+id/offline_progress"
-                    android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp" android:max="100"
-                    android:visibility="gone" />
-                <TextView android:id="@+id/offline_message" android:layout_width="match_parent"
-                    android:layout_height="wrap_content" android:layout_marginTop="12dp"
-                    android:textAppearance="?attr/textAppearanceBodyMedium"
-                    android:textColor="@color/trail_on_surface_variant"
-                    android:accessibilityLiveRegion="polite" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-        <com.google.android.material.button.MaterialButton android:id="@+id/offline_download"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/download_offline" />
-        <com.google.android.material.button.MaterialButton android:id="@+id/offline_pause"
+        <TextView
+            android:id="@+id/offline_notice"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:accessibilityLiveRegion="polite" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/offline_retry"
             style="@style/Widget.TrailRelay.OutlinedButton"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/pause_offline" />
-        <com.google.android.material.button.MaterialButton android:id="@+id/offline_retry"
-            style="@style/Widget.TrailRelay.OutlinedButton"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
             android:text="@string/retry_offline" />
-        <com.google.android.material.button.MaterialButton android:id="@+id/offline_delete"
-            style="@style/Widget.TrailRelay.OutlinedButton"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/remove_offline" />
+        <LinearLayout
+            android:id="@+id/offline_items"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical" />
     </LinearLayout>
 </ScrollView>
