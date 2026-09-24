@@ -1,51 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/community_root" android:layout_width="match_parent"
-    android:layout_height="match_parent" android:orientation="vertical"
-    android:background="@color/trail_surface">
-    <com.google.android.material.button.MaterialButton android:id="@+id/community_back"
-        style="@style/Widget.TrailRelay.OutlinedButton"
-        android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:layout_marginStart="16dp" android:layout_marginTop="8dp"
-        android:text="@string/back_to_trails" />
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:paddingHorizontal="20dp" android:paddingTop="16dp"
-        android:paddingBottom="12dp" android:text="@string/community"
-        android:textAppearance="?attr/textAppearanceHeadlineMedium" android:accessibilityHeading="true" />
-    <com.google.android.material.textfield.TextInputLayout
-        style="@style/Widget.TrailRelay.SearchField"
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:layout_marginHorizontal="16dp" android:hint="@string/search_community">
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/community_search" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:inputType="text"
-            android:maxLines="1" android:imeOptions="actionDone" />
-    </com.google.android.material.textfield.TextInputLayout>
-    <Spinner android:id="@+id/state_filter" android:layout_width="match_parent"
-        android:layout_height="48dp" android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="8dp" android:background="@drawable/filter_background"
-        android:paddingStart="16dp" android:paddingEnd="48dp"
-        android:contentDescription="@string/state_filter" />
-    <Spinner android:id="@+id/difficulty_filter" android:layout_width="match_parent"
-        android:layout_height="48dp" android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="8dp" android:background="@drawable/filter_background"
-        android:paddingStart="16dp" android:paddingEnd="48dp"
-        android:contentDescription="@string/difficulty_filter" />
-    <Spinner android:id="@+id/vehicle_filter" android:layout_width="match_parent"
-        android:layout_height="48dp" android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="8dp" android:background="@drawable/filter_background"
-        android:paddingStart="16dp" android:paddingEnd="48dp"
-        android:contentDescription="@string/vehicle_filter" />
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/trail_surface">
     <com.google.android.material.progressindicator.LinearProgressIndicator
-        android:id="@+id/community_progress"
+        android:id="@+id/community_progress" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:indeterminate="true"
+        android:visibility="gone" />
+    <TextView android:id="@+id/community_message"
         android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:layout_marginTop="8dp" android:indeterminate="true" />
-    <TextView android:id="@+id/community_message" android:layout_width="match_parent"
-        android:layout_height="wrap_content" android:paddingHorizontal="20dp"
-        android:paddingVertical="12dp" android:textAppearance="?attr/textAppearanceBodyMedium"
-        android:textColor="@color/trail_on_surface_variant" android:accessibilityLiveRegion="polite" />
-    <ListView android:id="@+id/community_list" android:layout_width="match_parent"
+        android:paddingHorizontal="@dimen/space_content"
+        android:paddingVertical="@dimen/space_tight"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="@color/trail_on_surface_variant"
+        android:accessibilityLiveRegion="polite" />
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/community_list" android:layout_width="match_parent"
         android:layout_height="0dp" android:layout_weight="1"
-        android:divider="@android:color/transparent" android:dividerHeight="4dp"
-        android:paddingHorizontal="12dp" android:clipToPadding="false" />
+        android:paddingHorizontal="@dimen/space_content"
+        android:paddingTop="@dimen/space_related"
+        android:paddingBottom="@dimen/space_related"
+        android:clipToPadding="false" />
 </LinearLayout>

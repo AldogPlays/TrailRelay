@@ -1,62 +1,9 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/library"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@color/trail_surface"
-    android:orientation="vertical">
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/back_to_map"
-        style="@style/Widget.TrailRelay.OutlinedButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="8dp"
-        android:text="@string/back_to_map" />
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingHorizontal="20dp"
-        android:paddingTop="16dp"
-        android:paddingBottom="12dp"
-        android:text="@string/my_trails"
-        android:textAppearance="?attr/textAppearanceHeadlineMedium"
-        android:accessibilityHeading="true" />
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:layout_marginHorizontal="16dp" android:orientation="horizontal">
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/import_gpx"
-            android:layout_width="0dp" android:layout_height="wrap_content"
-            android:layout_weight="1" android:text="@string/import_gpx" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/community"
-            style="@style/Widget.TrailRelay.OutlinedButton"
-            android:layout_width="0dp" android:layout_height="wrap_content"
-            android:layout_marginStart="8dp" android:layout_weight="1"
-            android:text="@string/community" />
+<?xml version='1.0' encoding='utf-8'?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/library" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/trail_surface" android:orientation="vertical">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginHorizontal="@dimen/space_content" android:layout_marginVertical="@dimen/space_related" android:orientation="horizontal">
+        <com.google.android.material.button.MaterialButton android:id="@+id/import_gpx" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/import_gpx" />
     </LinearLayout>
-    <com.google.android.material.progressindicator.LinearProgressIndicator
-        android:id="@+id/library_progress"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:indeterminate="true"
-        android:visibility="gone" />
-    <TextView
-        android:id="@+id/library_message"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingHorizontal="20dp"
-        android:paddingVertical="12dp"
-        android:textAppearance="?attr/textAppearanceBodyMedium"
-        android:textColor="@color/trail_on_surface_variant"
-        android:accessibilityLiveRegion="polite" />
-    <ListView
-        android:id="@+id/trail_list"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:divider="@android:color/transparent"
-        android:dividerHeight="4dp"
-        android:paddingHorizontal="12dp"
-        android:clipToPadding="false" />
+    <com.google.android.material.progressindicator.LinearProgressIndicator android:id="@+id/library_progress" android:layout_width="match_parent" android:layout_height="wrap_content" android:indeterminate="true" android:visibility="gone" />
+    <TextView android:id="@+id/library_message" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingHorizontal="@dimen/space_content" android:paddingVertical="@dimen/space_compact" android:textAppearance="?attr/textAppearanceBodyMedium" android:textColor="@color/trail_on_surface_variant" android:accessibilityLiveRegion="polite" />
+    <androidx.recyclerview.widget.RecyclerView android:id="@+id/trail_list" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:paddingHorizontal="@dimen/space_content" android:paddingBottom="@dimen/space_related" android:clipToPadding="false" />
 </LinearLayout>

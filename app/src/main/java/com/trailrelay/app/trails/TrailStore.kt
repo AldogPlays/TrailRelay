@@ -14,6 +14,7 @@ import com.trailrelay.app.trails.community.CatalogEntry
 import com.trailrelay.app.trails.community.CommunityClient
 import com.trailrelay.app.trails.community.communityTrailId
 import com.trailrelay.app.trails.community.toLocalTrail
+import com.trailrelay.app.trails.community.resolveCommunityDownload
 
 /** Call on a worker thread. GPX bytes are staged privately, validated, then published atomically. */
 class TrailStore(private val context: Context) : SQLiteOpenHelper(context, "trails.db", null, 2) {
@@ -55,6 +56,21 @@ class TrailStore(private val context: Context) : SQLiteOpenHelper(context, "trai
         .inputStream().use(GpxParser::parse)
 
     fun hasLocalGpx(trail: Trail): Boolean = File(context.filesDir, trail.gpxLocalPath).isFile
+
+    fun localGpxSize(trail: Trail): Long? = File(context.filesDir, trail.gpxLocalPath)
+        .takeIf(File::isFile)?.length()
+
+    /** Removes this local route record and file only; associated MapLibre imagery is independent. */
+    fun removeLocalRoute(trail: Trail): Boolean {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            if (db.delete("trails", "id = ?", arrayOf(trail.id)) != 1) return false
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+        File(context.filesDir, trail.gpxLocalPath).delete()
+        return true
+    }
 
     fun import(uri: Uri): Trail {
         val directory = File(context.filesDir, "trails")
@@ -137,6 +153,12 @@ class TrailStore(private val context: Context) : SQLiteOpenHelper(context, "trai
             staged.delete()
             published?.delete()
         }
+    }
+
+    /** Community identity is stable across preview and detail entry points. */
+    fun downloadIfMissing(entry: CatalogEntry): Trail {
+        val existing = get(communityTrailId(entry.id))
+        return resolveCommunityDownload(existing, ::hasLocalGpx) { download(entry) }
     }
 
     private fun Trail.values() = ContentValues().apply {

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="horizontal" android:gravity="center_vertical"
+    android:paddingHorizontal="@dimen/space_content"
+    android:paddingTop="@dimen/space_related"
+    android:paddingBottom="@dimen/space_tight">
+    <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.TrailRelay.SearchField"
+        android:layout_width="0dp" android:layout_height="wrap_content"
+        android:layout_weight="1" app:hintEnabled="false">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/community_search" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:minHeight="@dimen/touch_target"
+            android:hint="@string/search_community" android:inputType="text"
+            android:maxLines="1" android:imeOptions="actionDone" />
+    </com.google.android.material.textfield.TextInputLayout>
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/community_filters"
+        style="@style/Widget.TrailRelay.OutlinedButton"
+        android:layout_width="wrap_content" android:layout_height="match_parent"
+        android:layout_marginStart="@dimen/space_related"
+        android:minWidth="@dimen/touch_target" android:paddingHorizontal="@dimen/space_related"
+        android:gravity="center" android:contentDescription="@string/filters"
+        app:icon="@drawable/ic_filters" app:iconSize="@dimen/icon_size"
+        app:iconGravity="textStart" app:iconPadding="@dimen/space_tight"
+        android:insetTop="0dp" android:insetBottom="0dp" />
+</LinearLayout>

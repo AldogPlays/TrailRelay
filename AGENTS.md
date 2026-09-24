@@ -46,12 +46,15 @@ TrailRelay trails are GPX-based.
 
 GPX is the canonical portable trail geometry format.
 
-TrailRelay has two conceptual trail sources:
+TrailRelay has two trail sources:
 
 * IMPORTED — GPX selected by the user from local storage
 * COMMUNITY — GPX downloaded from the TrailRelay community catalog
 
-The COMMUNITY source will be implemented later.
+Community uses the static TrailRelay-Trails catalog and hosted GPX files. A Community
+GPX can be previewed transiently before download; downloading saves it through
+TrailStore. For map display, use a valid local GPX immediately before considering
+any Community network fetch.
 
 Do not use USGS Trails as the primary TrailRelay trail catalog.
 
@@ -103,13 +106,11 @@ SQLite stores trail metadata and indexes.
 
 GPX files remain ordinary files in app-private storage.
 
-Trail records should be designed so IMPORTED and COMMUNITY trails can eventually use the same model.
+IMPORTED and COMMUNITY records use the same Trail model.
 
-## Community catalog — future architecture
+## Community catalog
 
-The community catalog is intended to be static and backend-free initially.
-
-Expected future design:
+The catalog is static and backend-free:
 
 GitHub repository
 → individual trail metadata + GPX files
@@ -119,7 +120,8 @@ GitHub repository
 → search/filter locally
 → user downloads chosen GPX
 
-Do not implement this until explicitly requested.
+Catalog entries can be searched and filtered locally. Preview GPX files are
+transient until the user downloads a route into TrailStore.
 
 Do not add:
 
@@ -131,7 +133,13 @@ Do not add:
 
 ## Map UI
 
-The map is the primary interface.
+Map is Home. Normal launch enters Browse mode, which shows locally saved trails.
+Selecting a route enters Selected Trail mode and hides unrelated route overlays.
+Community Preview uses the same map selection experience without presenting the
+route as saved. Taps on overlapping routes use a chooser.
+
+Top-level destinations are Map, My Trails, Community, Downloads & Storage, and
+Settings. Settings currently contains Keep screen awake.
 
 Keep it uncluttered.
 
@@ -143,15 +151,12 @@ Preserve:
 * manual panning
 * recenter/follow
 
-Trail selection should primarily come from the trail browser/library.
-
-Do not make precise tapping of thin trail lines the only way to select a trail.
+Trail selection is available from the map and trail lists. Do not make precise
+tapping of thin trail lines the only way to select a trail.
 
 ## Offline maps
 
-Offline imagery will be implemented after the local GPX trail library works.
-
-The eventual flow is:
+Offline USGS aerial imagery uses MapLibre offline regions:
 
 selected GPX trail
 → determine geometry/bounds
@@ -159,9 +164,10 @@ selected GPX trail
 → persist it
 → work with networking disabled
 
-Prefer MapLibre's supported offline APIs before inventing custom tile-storage infrastructure.
-
-Do not implement offline imagery unless the current task explicitly requests it.
+Downloads provide visible progress and support pause, resume, and deletion.
+Downloads & Storage manages GPX route files and aerial packages as separate
+resources, including separate removal actions and available size information.
+Keep MapLibre's offline region architecture rather than inventing tile storage.
 
 ## Architecture
 
@@ -172,7 +178,7 @@ Expected areas:
 * map/
 * location/
 * trails/
-* offline/ later
+* offline/
 
 Avoid:
 
@@ -195,6 +201,25 @@ Do not redesign unrelated working code.
 Do not add dependencies without explaining why the existing Android/JDK/MapLibre capabilities are insufficient.
 
 If an unrelated improvement is noticed, mention it rather than implementing it.
+
+## UI layout guardrails
+
+* Keep Views/XML with Material 3; no Compose.
+* Map is edge-to-edge. Inset overlay controls, never the map itself.
+* List/detail screens use the shared Material toolbar/app-bar content shell.
+* App-bar surfaces continue through the status-bar region; no fake spacer views.
+* Apply system-bar insets once; avoid duplicated root and toolbar padding.
+* No hamburger or navigation drawer without an explicit future product decision.
+* Map application navigation uses the Explore modal bottom sheet.
+* Use shared spacing resources and preserve 48dp minimum effective touch targets.
+* Community keeps a fixed toolbar/status-bar shell above one compact Search + Filter row that scrolls away with results.
+* Never fetch Community GPX for map display when a valid local GPX exists.
+* Downloads & Storage manages route files and aerial packages as separate resources.
+* Map selection uses the persistent, edge-attached bottom sheet; avoid floating information cards.
+* A selected trail starts collapsed; its content-sized details state stops around half the usable screen height and scrolls internally when needed.
+* Main-map contextual controls must account for each other's bottom/system insets.
+* Long-running user actions retain visible progress and state feedback.
+* Major UI changes require physical-device visual verification before Git approval; Gradle alone is insufficient.
 
 ## Codex validation rules
 
@@ -234,7 +259,7 @@ Milestones should produce:
 
 app/build/outputs/apk/debug/app-debug.apk
 
-Do not configure release signing until explicitly requested.
+Release signing uses the existing identity and the process in `docs/releasing.md`.
 
 ## Definition of done
 

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Color
 import android.location.Location
+import android.graphics.PointF
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -38,6 +39,9 @@ class AerialMap(
     private var following = state?.getBoolean("following", true) ?: true
     private var centered = state?.getBoolean("centered", false) ?: false
     private var selectedTrail: Pair<Trail, GpxTrack>? = null
+    private var browseTrails: Map<String, GpxTrack> = emptyMap()
+    private var browseVisible = true
+    var onTrailTap: ((List<String>) -> Unit)? = null
     private var fitTrailPending = state?.getBoolean("fitTrailPending") ?: false
     private var destroyed = false
     private var offlineTrailId: String? = null
@@ -96,6 +100,16 @@ class AerialMap(
                         trailCameraUntouched = false
                     }
                 }
+                ready.addOnMapClickListener { point ->
+                    if (selectedTrail != null) false else {
+                        val screen = ready.projection.toScreenLocation(point)
+                        val ids = uniqueTrailHits(ready.queryRenderedFeatures(PointF(screen.x, screen.y),
+                            TrailOverlay.BROWSE_HIT_LAYER).map {
+                            it.getStringProperty(TrailOverlay.TRAIL_ID)
+                        })
+                        if (ids.isEmpty()) false else { onTrailTap?.invoke(ids); true }
+                    }
+                }
                 loadStyle()
             }
         }
@@ -116,7 +130,7 @@ class AerialMap(
                 Log.i(TAG, "Bundled USGS raster style loaded")
                 onError(null)
                 updateLocationComponent()
-                selectedTrail?.let { TrailOverlay.render(loaded, it.second) }
+                renderTrails()
                 fitSelectedTrail()
                 latest?.let(::showLocation)
             }
@@ -125,14 +139,43 @@ class AerialMap(
 
     fun showTrail(trail: Trail, track: GpxTrack, fit: Boolean = true) {
         selectedTrail = trail to track
+        browseVisible = false
         trailCameraUntouched = fit
         if (fit) {
             following = false
             centered = true
             fitTrailPending = true
         }
-        style?.let { TrailOverlay.render(it, track) }
+        renderTrails()
         fitSelectedTrail()
+    }
+
+    fun showBrowseTrails(trails: Map<String, GpxTrack>) {
+        browseTrails = trails
+        renderTrails()
+    }
+
+    fun beginSelection() {
+        selectedTrail = null
+        browseVisible = false
+        fitTrailPending = false
+        trailCameraUntouched = false
+        offlineTrailId = null
+        renderTrails()
+    }
+
+    fun clearTrail() {
+        selectedTrail = null
+        browseVisible = true
+        fitTrailPending = false
+        trailCameraUntouched = false
+        offlineTrailId = null
+        renderTrails()
+    }
+
+    private fun renderTrails() {
+        style?.let { TrailOverlay.render(it,
+            if (browseVisible) browseTrails else emptyMap(), selectedTrail?.second) }
     }
 
     /** Keep the initial view of a downloaded trail inside its saved zoom range.

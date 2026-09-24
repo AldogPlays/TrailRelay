@@ -44,6 +44,26 @@
         <item name="boxCornerRadiusBottomEnd">@dimen/trail_corner_radius</item>
     </style>
 
+    <style name="Widget.TrailRelay.ExploreRow" parent="Widget.Material3.Button.TextButton">
+        <item name="android:minHeight">@dimen/touch_target</item>
+        <item name="android:gravity">start|center_vertical</item>
+        <item name="android:textAlignment">viewStart</item>
+        <item name="android:textColor">@color/trail_on_surface</item>
+        <item name="iconTint">@color/trail_on_surface</item>
+        <item name="iconSize">@dimen/icon_size</item>
+        <item name="iconPadding">@dimen/space_content</item>
+    </style>
+
+    <style name="ThemeOverlay.TrailRelay.BottomSheet" parent="ThemeOverlay.Material3.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/Widget.TrailRelay.BottomSheet</item>
+        <item name="enableEdgeToEdge">true</item>
+    </style>
+    <style name="Widget.TrailRelay.BottomSheet" parent="Widget.Material3.BottomSheet.Modal">
+        <item name="paddingBottomSystemWindowInsets">true</item>
+        <item name="paddingLeftSystemWindowInsets">true</item>
+        <item name="paddingRightSystemWindowInsets">true</item>
+    </style>
+
     <style name="Widget.TrailRelay.StatusChip" parent="Widget.Material3.Chip.Assist">
         <item name="android:minHeight">0dp</item>
         <item name="chipMinHeight">30dp</item>

@@ -4,7 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="12dp"
+    android:layout_marginBottom="@dimen/space_related"
     app:cardBackgroundColor="@color/trail_surface_variant"
     app:cardCornerRadius="@dimen/trail_corner_radius"
     app:cardElevation="0dp">
@@ -12,14 +12,14 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="@dimen/space_content">
         <TextView android:id="@+id/offline_item_name"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:textAppearance="?attr/textAppearanceTitleMedium" />
         <com.google.android.material.chip.ChipGroup
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="6dp" app:chipSpacingHorizontal="6dp"
-            app:chipSpacingVertical="4dp" app:singleLine="false">
+            android:layout_marginTop="@dimen/space_related" app:chipSpacingHorizontal="@dimen/space_related"
+            app:chipSpacingVertical="@dimen/space_tight" app:singleLine="false">
             <com.google.android.material.chip.Chip
                 android:id="@+id/offline_item_route_chip"
                 style="@style/Widget.TrailRelay.StatusChip"
@@ -33,25 +33,29 @@
             android:id="@+id/offline_item_progress"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="@dimen/space_compact"
             android:indeterminate="true"
             android:visibility="gone" />
+        <TextView android:id="@+id/offline_item_state"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_related" android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:accessibilityLiveRegion="polite" />
         <TextView
             android:id="@+id/offline_item_details"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="@dimen/space_related"
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="@color/trail_on_surface_variant" />
         <TextView android:id="@+id/offline_item_note"
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="6dp" android:textAppearance="?attr/textAppearanceBodySmall"
+            android:layout_marginTop="@dimen/space_related" android:textAppearance="?attr/textAppearanceBodySmall"
             android:textColor="@color/trail_on_surface_variant" android:visibility="gone" />
         <View android:id="@+id/offline_item_divider"
             android:layout_width="match_parent" android:layout_height="1dp"
-            android:layout_marginTop="12dp" android:background="@color/trail_outline" />
+            android:layout_marginTop="@dimen/space_compact" android:background="@color/trail_outline" />
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="8dp" android:orientation="horizontal">
+            android:layout_marginTop="@dimen/space_related" android:orientation="horizontal">
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/offline_item_resume"
                 android:layout_width="0dp" android:layout_height="wrap_content"
@@ -64,10 +68,16 @@
                 android:layout_weight="1" android:text="@string/pause_offline"
                 android:visibility="gone" />
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/offline_item_remove_route"
+                style="@style/Widget.TrailRelay.OutlinedButton"
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:text="@string/remove_route"
+                android:visibility="gone" />
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/offline_item_delete"
                 style="@style/Widget.TrailRelay.OutlinedButton"
                 android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_marginStart="8dp" android:layout_weight="1"
+                android:layout_marginStart="@dimen/space_related" android:layout_weight="1"
                 android:text="@string/remove_offline" />
         </LinearLayout>
     </LinearLayout>

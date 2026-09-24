@@ -1,92 +1,31 @@
-<?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/detail_root"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:fillViewport="true" android:background="@color/trail_surface">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical" android:padding="16dp">
-        <com.google.android.material.button.MaterialButton android:id="@+id/detail_back"
-            style="@style/Widget.TrailRelay.OutlinedButton"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="@string/back_to_trails" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="20dp" android:text="@string/trail_details"
-            android:textAppearance="?attr/textAppearanceLabelLarge"
-            android:textColor="@color/trail_primary" />
-        <TextView android:id="@+id/detail_name" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="4dp"
-            android:textAppearance="?attr/textAppearanceHeadlineMedium"
-            android:accessibilityHeading="true" />
-        <TextView android:id="@+id/detail_source" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="8dp"
-            android:textAppearance="?attr/textAppearanceLabelLarge"
-            android:textColor="@color/trail_on_surface_variant" />
-        <com.google.android.material.chip.ChipGroup
-            android:id="@+id/detail_status_chips"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="8dp" app:chipSpacingHorizontal="6dp"
-            app:chipSpacingVertical="4dp" app:singleLine="false">
-            <com.google.android.material.chip.Chip
-                android:id="@+id/detail_route_chip"
-                style="@style/Widget.TrailRelay.StatusChip"
-                android:layout_width="wrap_content" android:layout_height="wrap_content" />
-            <com.google.android.material.chip.Chip
-                android:id="@+id/detail_aerial_chip"
-                style="@style/Widget.TrailRelay.StatusChip"
-                android:layout_width="wrap_content" android:layout_height="wrap_content" />
+<?xml version='1.0' encoding='utf-8'?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/detail_root" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true" android:clipToPadding="false" android:background="@color/trail_surface">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="@dimen/space_content">
+        <TextView android:id="@+id/detail_name" android:layout_width="match_parent" android:layout_height="wrap_content" android:textAppearance="?attr/textAppearanceHeadlineSmall" android:accessibilityHeading="true" />
+        <TextView android:id="@+id/detail_source" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_related" android:textAppearance="?attr/textAppearanceLabelLarge" android:textColor="@color/trail_on_surface_variant" />
+        <com.google.android.material.chip.ChipGroup android:id="@+id/detail_status_chips" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_related" app:chipSpacingHorizontal="@dimen/space_related" app:chipSpacingVertical="@dimen/space_tight" app:singleLine="false">
+            <com.google.android.material.chip.Chip android:id="@+id/detail_route_chip" style="@style/Widget.TrailRelay.StatusChip" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            <com.google.android.material.chip.Chip android:id="@+id/detail_aerial_chip" style="@style/Widget.TrailRelay.StatusChip" android:layout_width="wrap_content" android:layout_height="wrap_content" />
         </com.google.android.material.chip.ChipGroup>
-        <TextView android:id="@+id/detail_status" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="4dp"
-            android:textAppearance="?attr/textAppearanceTitleMedium"
-            android:textColor="@color/trail_primary" android:accessibilityLiveRegion="polite" />
-        <TextView android:id="@+id/detail_description" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="20dp"
-            android:textAppearance="?attr/textAppearanceBodyLarge" />
-        <com.google.android.material.card.MaterialCardView android:id="@+id/detail_fields_card"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="20dp" app:cardBackgroundColor="@color/trail_surface_variant"
-            app:cardCornerRadius="@dimen/trail_corner_radius" app:cardElevation="0dp">
-            <LinearLayout android:id="@+id/detail_fields" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:orientation="vertical"
-                android:padding="16dp" />
+        <TextView android:id="@+id/detail_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_tight" android:textAppearance="?attr/textAppearanceTitleMedium" android:textColor="@color/trail_primary" android:accessibilityLiveRegion="polite" />
+        <TextView android:id="@+id/detail_description" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_section" android:textAppearance="?attr/textAppearanceBodyLarge" />
+        <com.google.android.material.card.MaterialCardView android:id="@+id/detail_fields_card" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_section" app:cardBackgroundColor="@color/trail_surface_variant" app:cardCornerRadius="@dimen/trail_corner_radius" app:cardElevation="0dp">
+            <LinearLayout android:id="@+id/detail_fields" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="@dimen/space_content" />
         </com.google.android.material.card.MaterialCardView>
-        <TextView android:id="@+id/detail_message" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="16dp"
-            android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:textColor="@color/trail_on_surface_variant" android:accessibilityLiveRegion="polite" />
-        <com.google.android.material.progressindicator.LinearProgressIndicator
-            android:id="@+id/detail_progress" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="12dp"
-            android:indeterminate="true" android:visibility="gone" />
-        <com.google.android.material.button.MaterialButton android:id="@+id/detail_primary"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="24dp" />
-        <com.google.android.material.card.MaterialCardView android:id="@+id/detail_offline_card"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="20dp" app:cardBackgroundColor="@color/trail_surface_variant"
-            app:cardCornerRadius="@dimen/trail_corner_radius" app:cardElevation="0dp">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:orientation="vertical" android:padding="16dp">
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:text="@string/offline_maps" android:textAppearance="?attr/textAppearanceTitleMedium" />
-                <TextView android:id="@+id/detail_offline_state" android:layout_width="match_parent"
-                    android:layout_height="wrap_content" android:layout_marginTop="8dp"
-                    android:textAppearance="?attr/textAppearanceBodyMedium"
-                    android:accessibilityLiveRegion="polite" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/detail_offline_action"
-                    style="@style/Widget.TrailRelay.OutlinedButton"
-                    android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp" />
+        <TextView android:id="@+id/detail_message" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_content" android:textAppearance="?attr/textAppearanceBodyMedium" android:textColor="@color/trail_on_surface_variant" android:accessibilityLiveRegion="polite" />
+        <com.google.android.material.progressindicator.LinearProgressIndicator android:id="@+id/detail_progress" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_compact" android:indeterminate="true" android:visibility="gone" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/detail_primary" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_section" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/detail_preview" style="@style/Widget.TrailRelay.OutlinedButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_related" android:text="@string/preview_on_map" android:visibility="gone" />
+        <com.google.android.material.card.MaterialCardView android:id="@+id/detail_offline_card" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_section" app:cardBackgroundColor="@color/trail_surface_variant" app:cardCornerRadius="@dimen/trail_corner_radius" app:cardElevation="0dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="@dimen/space_content">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/offline_maps" android:textAppearance="?attr/textAppearanceTitleMedium" />
+                <TextView android:id="@+id/detail_offline_state" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_related" android:textAppearance="?attr/textAppearanceBodyMedium" android:accessibilityLiveRegion="polite" />
+                <com.google.android.material.progressindicator.LinearProgressIndicator android:id="@+id/detail_offline_progress" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_related" android:visibility="gone" />
+                <TextView android:id="@+id/detail_offline_metrics" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_tight" android:textAppearance="?attr/textAppearanceBodySmall" android:visibility="gone" />
+                <com.google.android.material.button.MaterialButton android:id="@+id/detail_offline_action" style="@style/Widget.TrailRelay.OutlinedButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_compact" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-        <com.google.android.material.button.MaterialButton android:id="@+id/detail_source_action"
-            style="@style/Widget.TrailRelay.OutlinedButton"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="16dp" android:text="@string/view_source" />
-        <TextView android:id="@+id/detail_source_url" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="4dp"
-            android:textAppearance="?attr/textAppearanceBodySmall"
-            android:textColor="@color/trail_on_surface_variant" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/detail_source_action" style="@style/Widget.TrailRelay.OutlinedButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_content" android:text="@string/view_source" />
+        <TextView android:id="@+id/detail_source_url" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_tight" android:textAppearance="?attr/textAppearanceBodySmall" android:textColor="@color/trail_on_surface_variant" />
     </LinearLayout>
-</ScrollView>
+</androidx.core.widget.NestedScrollView>

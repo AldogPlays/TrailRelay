@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:clipToPadding="false">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="@dimen/space_content">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/filters" android:textAppearance="?attr/textAppearanceTitleLarge"
+            android:accessibilityHeading="true" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_content" android:text="@string/state_filter"
+            android:labelFor="@id/state_filter" />
+        <Spinner android:id="@+id/state_filter" android:layout_width="match_parent"
+            android:layout_height="@dimen/touch_target" android:spinnerMode="dialog"
+            android:prompt="@string/state_filter" android:contentDescription="@string/state_filter" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_related" android:text="@string/difficulty_filter"
+            android:labelFor="@id/difficulty_filter" />
+        <Spinner android:id="@+id/difficulty_filter" android:layout_width="match_parent"
+            android:layout_height="@dimen/touch_target" android:spinnerMode="dialog"
+            android:prompt="@string/difficulty_filter" android:contentDescription="@string/difficulty_filter" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_related" android:text="@string/vehicle_filter"
+            android:labelFor="@id/vehicle_filter" />
+        <Spinner android:id="@+id/vehicle_filter" android:layout_width="match_parent"
+            android:layout_height="@dimen/touch_target" android:spinnerMode="dialog"
+            android:prompt="@string/vehicle_filter" android:contentDescription="@string/vehicle_filter" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/filters_apply"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_content" android:text="@string/apply_filters" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/filters_clear"
+            style="@style/Widget.TrailRelay.OutlinedButton"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/clear_filters" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

@@ -22,6 +22,7 @@
         <activity android:name=".trails.MyTrailsActivity" android:exported="false" />
         <activity android:name=".trails.TrailDetailActivity" android:exported="false" />
         <activity android:name=".offline.OfflineActivity" android:exported="false" />
+        <activity android:name=".SettingsActivity" android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

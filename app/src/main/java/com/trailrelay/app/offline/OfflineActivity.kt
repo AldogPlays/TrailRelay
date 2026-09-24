@@ -1,17 +1,15 @@
 package com.trailrelay.app.offline
 
 import android.os.Bundle
+import com.trailrelay.app.ui.ContentShell
 import android.text.format.DateFormat
-import android.text.format.Formatter
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.activity.enableEdgeToEdge
+import android.text.format.Formatter
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.chip.Chip
 import com.google.android.material.progressindicator.LinearProgressIndicator
@@ -32,6 +30,7 @@ class OfflineActivity : AppCompatActivity() {
     private val worker = Executors.newSingleThreadExecutor()
     private var trails: Map<String, Trail> = emptyMap()
     private var availableRouteIds: Set<String> = emptySet()
+    private var routeSizes: Map<String, Long> = emptyMap()
     private var trailsLoaded = false
     private var trailsError = false
     private var selectedId: String? = null
@@ -39,17 +38,10 @@ class OfflineActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         MapLibre.getInstance(this)
-        setContentView(R.layout.activity_offline)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.offline_root)) { view, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
-            insets
-        }
+        ContentShell.install(this, R.string.offline_library, R.layout.activity_offline, R.id.offline_root)
         downloads = OfflineDownloads.get(this)
         selectedId = intent.getStringExtra(MyTrailsActivity.EXTRA_TRAIL_ID)
-        findViewById<Button>(R.id.offline_back).setOnClickListener { finish() }
         findViewById<Button>(R.id.offline_retry).setOnClickListener {
             downloads.refresh()
             loadTrails()
@@ -62,14 +54,17 @@ class OfflineActivity : AppCompatActivity() {
             val result = runCatching {
                 TrailStore(applicationContext).use { store ->
                     val listed = store.list()
-                    listed.associateBy(Trail::id) to listed.filter(store::hasLocalGpx).map(Trail::id).toSet()
+                    val local = listed.filter(store::hasLocalGpx)
+                    Triple(listed.associateBy(Trail::id), local.map(Trail::id).toSet(),
+                        local.mapNotNull { trail -> store.localGpxSize(trail)?.let { trail.id to it } }.toMap())
                 }
             }
             runOnUiThread {
                 if (!isDestroyed) {
-                    result.onSuccess { (listed, availableIds) ->
+                    result.onSuccess { (listed, availableIds, sizes) ->
                         trails = listed
                         availableRouteIds = availableIds
+                        routeSizes = sizes
                         trailsError = false
                     }
                         .onFailure { trailsError = true }
@@ -111,6 +106,30 @@ class OfflineActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.offline_retry).visibility =
             if (downloads.loadError != null || trailsError) View.VISIBLE else View.GONE
+        renderStorageSummary(items)
+    }
+
+    private fun renderStorageSummary(items: List<OfflineDownloads.Package>) {
+        val routeBytes = routeSizes.values.sum()
+        val aerialBytes = items.sumOf { it.status?.completedResourceSize?.coerceAtLeast(0L) ?: 0L }
+        val parts = listOfNotNull(
+            routeBytes.takeIf { it > 0 }?.let { "Routes: ${Formatter.formatFileSize(this, it)}" },
+            aerialBytes.takeIf { it > 0 }?.let { "Aerial maps: ${Formatter.formatFileSize(this, it)}" })
+        findViewById<TextView>(R.id.offline_summary).text = if (parts.isEmpty())
+            getString(R.string.offline_library_intro) else parts.joinToString(" · ")
+    }
+
+    private fun confirmRemoveRoute(trail: Trail) {
+        val message = if (trail.source == com.trailrelay.app.trails.TrailSource.IMPORTED)
+            getString(R.string.remove_imported_route_confirmation, trail.name)
+        else getString(R.string.remove_community_route_confirmation, trail.name)
+        MaterialAlertDialogBuilder(this).setTitle(R.string.remove_route).setMessage(message)
+            .setNegativeButton(android.R.string.cancel, null).setPositiveButton(R.string.remove_route) { _, _ ->
+                worker.execute {
+                    runCatching { TrailStore(applicationContext).use { it.removeLocalRoute(trail) } }
+                    runOnUiThread { if (!isDestroyed) loadTrails() }
+                }
+            }.show()
     }
 
     private fun addNewTrailRow(container: LinearLayout, trail: Trail, creating: Boolean) {
@@ -125,21 +144,38 @@ class OfflineActivity : AppCompatActivity() {
             downloads.errorFor(trail.id) != null -> AerialChipState.ERROR
             else -> AerialChipState.NOT_OFFLINE
         })
-        row.findViewById<TextView>(R.id.offline_item_details).text = getString(R.string.offline_coverage_details)
+        row.findViewById<TextView>(R.id.offline_item_details).text = buildString {
+            routeSizes[trail.id]?.let { append(getString(R.string.route_size,
+                Formatter.formatFileSize(this@OfflineActivity, it))) }
+            if (isNotEmpty()) append("\n")
+            append(getString(R.string.offline_coverage_details))
+        }
         row.findViewById<TextView>(R.id.offline_item_note).apply {
             text = downloads.errorFor(trail.id).orEmpty()
             visibility = if (text.isBlank()) View.GONE else View.VISIBLE
         }
-        row.findViewById<LinearProgressIndicator>(R.id.offline_item_progress).visibility =
-            if (creating) View.VISIBLE else View.GONE
+        val state = offlineOperationState(creating, false,
+            when {
+                downloads.loadError != null || downloads.errorFor(trail.id) != null -> OfflineLibraryState.FAILED
+                !downloads.loaded -> OfflineLibraryState.CHECKING
+                else -> null
+            })
+        row.findViewById<TextView>(R.id.offline_item_state).setText(state.label())
+        row.findViewById<LinearProgressIndicator>(R.id.offline_item_progress)
+            .showOfflineProgress(state, null)
         row.findViewById<Button>(R.id.offline_item_resume).apply {
-            text = getString(R.string.download_offline_map)
+            text = getString(if (downloads.errorFor(trail.id) != null) R.string.retry_offline
+                else R.string.download_offline_map)
             isEnabled = downloads.loaded && downloads.loadError == null && !creating &&
                 trail.id in availableRouteIds
             setOnClickListener { downloads.start(trail) }
         }
         row.findViewById<Button>(R.id.offline_item_pause).visibility = View.GONE
         row.findViewById<Button>(R.id.offline_item_delete).visibility = View.GONE
+        row.findViewById<Button>(R.id.offline_item_remove_route).apply {
+            visibility = if (trail.id in availableRouteIds) View.VISIBLE else View.GONE
+            setOnClickListener { confirmRemoveRoute(trail) }
+        }
         container.addView(row)
     }
 
@@ -165,23 +201,18 @@ class OfflineActivity : AppCompatActivity() {
             else -> AerialChipState.fromLibrary(item.libraryState)
         })
         row.findViewById<TextView>(R.id.offline_item_details).text = buildString {
+            fun line(value: String) { if (isNotEmpty()) append("\n"); append(value) }
+            val routeSize = metadata?.trailId?.let(routeSizes::get)
+            routeSize?.let { line(getString(R.string.route_size, Formatter.formatFileSize(this@OfflineActivity, it))) }
+            item.status?.completedResourceSize?.takeIf { it > 0 }?.let {
+                line(getString(R.string.aerial_data_size, Formatter.formatFileSize(this@OfflineActivity, it)))
+            }
             metadata?.let {
-                append(getString(R.string.offline_zoom_created, it.minZoom, it.maxZoom,
+                line(getString(R.string.offline_zoom_created, it.minZoom, it.maxZoom,
                     DateFormat.getDateFormat(this@OfflineActivity).format(it.createdAt)))
             }
-            item.status?.let {
-                if (isNotEmpty()) append("\n")
-                append(getString(R.string.offline_tiles_downloaded, it.completedTileCount))
-                if (it.completedResourceSize > 0) {
-                    append(" · ")
-                    append(getString(R.string.offline_bytes_downloaded,
-                        Formatter.formatFileSize(this@OfflineActivity, it.completedResourceSize)))
-                }
-                if (it.isRequiredResourceCountPrecise && it.requiredResourceCount > 0) {
-                    append("\n")
-                    append(getString(R.string.offline_resources_downloaded,
-                        it.completedResourceCount, it.requiredResourceCount))
-                }
+            offlineProgressMetrics(this@OfflineActivity, item.status).takeIf(String::isNotBlank)?.let {
+                line(it)
             }
         }
         row.findViewById<TextView>(R.id.offline_item_note).apply {
@@ -190,6 +221,7 @@ class OfflineActivity : AppCompatActivity() {
                     !trailsLoaded || trailsError -> null
                     metadata == null -> getString(R.string.offline_unrecognized_details)
                     orphan -> getString(R.string.offline_orphaned_details)
+                    metadata.trailId !in trails -> getString(R.string.route_not_saved_aerial_kept)
                     metadata.trailId !in availableRouteIds -> getString(R.string.route_file_missing)
                     else -> null
                 },
@@ -197,8 +229,10 @@ class OfflineActivity : AppCompatActivity() {
             ).joinToString("\n")
             visibility = if (text.isBlank()) View.GONE else View.VISIBLE
         }
-        row.findViewById<LinearProgressIndicator>(R.id.offline_item_progress).visibility =
-            if (item.libraryState == OfflineLibraryState.DOWNLOADING) View.VISIBLE else View.GONE
+        val operation = offlineOperationState(false, item.deleting, item.libraryState)
+        row.findViewById<TextView>(R.id.offline_item_state).setText(operation.label())
+        row.findViewById<LinearProgressIndicator>(R.id.offline_item_progress)
+            .showOfflineProgress(operation, item.status)
         row.findViewById<Button>(R.id.offline_item_resume).apply {
             visibility = if (canResumeOffline(item.libraryState, metadata != null) && !item.deleting)
                 View.VISIBLE else View.GONE
@@ -219,6 +253,11 @@ class OfflineActivity : AppCompatActivity() {
                     .setPositiveButton(R.string.remove_offline) { _, _ -> downloads.delete(item) }
                     .show()
             }
+        }
+        row.findViewById<Button>(R.id.offline_item_remove_route).apply {
+            val trail = metadata?.trailId?.let(trails::get)?.takeIf { it.id in availableRouteIds }
+            visibility = if (trail != null) View.VISIBLE else View.GONE
+            setOnClickListener { trail?.let(::confirmRemoveRoute) }
         }
         container.addView(row)
     }

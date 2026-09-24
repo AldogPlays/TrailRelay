@@ -1,3 +1,11 @@
 <resources>
     <dimen name="trail_corner_radius">12dp</dimen>
+    <dimen name="space_tight">4dp</dimen>
+    <dimen name="space_related">8dp</dimen>
+    <dimen name="space_compact">12dp</dimen>
+    <dimen name="space_content">16dp</dimen>
+    <dimen name="space_section">24dp</dimen>
+    <dimen name="touch_target">48dp</dimen>
+    <dimen name="toolbar_height">56dp</dimen>
+    <dimen name="icon_size">24dp</dimen>
 </resources>

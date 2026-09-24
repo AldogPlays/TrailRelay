@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/shell_root" android:layout_width="match_parent"
+    android:layout_height="match_parent" android:background="@color/trail_surface">
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/shell_app_bar" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:background="@color/trail_surface"
+        android:elevation="8dp" app:statusBarForeground="@color/trail_surface"
+        app:liftOnScroll="true">
+        <com.google.android.material.appbar.CollapsingToolbarLayout
+            android:id="@+id/shell_collapsing" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:minHeight="@dimen/toolbar_height"
+            app:titleEnabled="false" app:contentScrim="@color/trail_surface"
+            app:layout_scrollFlags="scroll|exitUntilCollapsed|enterAlways">
+            <FrameLayout android:id="@+id/shell_chrome"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/toolbar_height" />
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/shell_toolbar" android:layout_width="match_parent"
+                android:layout_height="@dimen/toolbar_height"
+                android:background="@color/trail_surface" android:elevation="8dp"
+                app:layout_collapseMode="pin"
+                app:navigationIcon="@drawable/ic_arrow_back"
+                app:navigationContentDescription="@string/back" />
+        </com.google.android.material.appbar.CollapsingToolbarLayout>
+    </com.google.android.material.appbar.AppBarLayout>
+    <FrameLayout android:id="@+id/shell_body" android:layout_width="match_parent"
+        android:layout_height="match_parent" app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

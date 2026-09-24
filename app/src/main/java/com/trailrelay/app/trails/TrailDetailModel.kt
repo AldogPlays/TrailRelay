@@ -66,8 +66,7 @@ class TrailDetailModel(application: Application) : AndroidViewModel(application)
         worker.execute {
             val result = runCatching {
                 TrailStore(getApplication()).use { store ->
-                    // Recheck persisted identity before any network request or insert.
-                    store.get(communityTrailId(selected.id)) ?: store.download(selected)
+                    store.downloadIfMissing(selected)
                 }
             }
             post {

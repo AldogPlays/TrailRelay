@@ -3,16 +3,16 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginHorizontal="4dp"
-    android:layout_marginVertical="4dp"
-    android:minHeight="72dp"
+    android:layout_marginBottom="@dimen/space_related"
+    android:minHeight="@dimen/touch_target" android:clickable="true" android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
     app:cardBackgroundColor="@color/trail_surface"
     app:cardCornerRadius="@dimen/trail_corner_radius"
     app:cardElevation="0dp"
     app:strokeColor="@color/trail_outline"
     app:strokeWidth="1dp">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical" android:paddingHorizontal="16dp" android:paddingVertical="10dp">
+        android:orientation="vertical" android:paddingHorizontal="@dimen/space_content" android:paddingVertical="@dimen/space_compact">
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="horizontal" android:gravity="center_vertical">
             <TextView android:id="@+id/trail_row_name" android:layout_width="0dp"
@@ -20,25 +20,25 @@
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 android:textColor="@color/trail_on_surface" android:maxLines="2"
                 android:ellipsize="end" />
-            <ImageView android:layout_width="20dp" android:layout_height="20dp"
-                android:layout_marginStart="8dp" android:src="@drawable/ic_chevron_right"
+            <ImageView android:layout_width="@dimen/icon_size" android:layout_height="@dimen/icon_size"
+                android:layout_marginStart="@dimen/space_related" android:src="@drawable/ic_chevron_right"
                 android:tint="@color/trail_on_surface_variant"
                 android:importantForAccessibility="no" />
         </LinearLayout>
         <TextView android:id="@+id/trail_row_meta" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="4dp"
+            android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_tight"
             android:textAppearance="?attr/textAppearanceBodyMedium"
             android:textColor="@color/trail_on_surface_variant" android:maxLines="1"
             android:ellipsize="end" />
         <TextView android:id="@+id/trail_row_location" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="2dp"
+            android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_tight"
             android:textAppearance="?attr/textAppearanceBodySmall"
             android:textColor="@color/trail_on_surface_variant" android:maxLines="1"
             android:ellipsize="end" android:visibility="gone" />
         <com.google.android.material.chip.ChipGroup
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="5dp" app:chipSpacingHorizontal="6dp"
-            app:chipSpacingVertical="4dp" app:singleLine="false">
+            android:layout_marginTop="@dimen/space_tight" app:chipSpacingHorizontal="@dimen/space_related"
+            app:chipSpacingVertical="@dimen/space_tight" app:singleLine="false">
             <com.google.android.material.chip.Chip
                 android:id="@+id/trail_row_route_chip"
                 style="@style/Widget.TrailRelay.StatusChip"
@@ -48,5 +48,12 @@
                 style="@style/Widget.TrailRelay.StatusChip"
                 android:layout_width="wrap_content" android:layout_height="wrap_content" />
         </com.google.android.material.chip.ChipGroup>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/trail_row_preview"
+            style="@style/Widget.TrailRelay.OutlinedButton"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_tight" android:text="@string/preview_on_map"
+            android:focusable="true"
+            android:visibility="gone" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

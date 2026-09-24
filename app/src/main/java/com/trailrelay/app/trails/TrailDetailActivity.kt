@@ -4,19 +4,24 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import com.trailrelay.app.ui.ContentShell
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.ViewModelProvider
 import com.trailrelay.app.R
+import com.trailrelay.app.MainActivity
 import com.trailrelay.app.offline.OfflineActivity
 import com.trailrelay.app.offline.OfflineDownloads
 import com.trailrelay.app.offline.OfflineLibraryState
+import com.trailrelay.app.offline.OfflineOperationState
+import com.trailrelay.app.offline.offlineOperationState
+import com.trailrelay.app.offline.offlineProgressMetrics
+import com.trailrelay.app.offline.showOfflineProgress
+import com.trailrelay.app.offline.label
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.chip.Chip
 import com.trailrelay.app.trails.community.communityTrailId
@@ -27,28 +32,28 @@ class TrailDetailActivity : AppCompatActivity() {
     private lateinit var model: TrailDetailModel
     private lateinit var downloads: OfflineDownloads
     private lateinit var trailStore: TrailStore
+    private var wasDownloadingRoute = false
     private val offlineListener: () -> Unit = { render() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         MapLibre.getInstance(this)
-        setContentView(R.layout.activity_trail_detail)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.detail_root)) { view, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
-            insets
-        }
+        ContentShell.install(this, R.string.trail_details, R.layout.activity_trail_detail, R.id.detail_root)
         downloads = OfflineDownloads.get(this)
         trailStore = TrailStore(applicationContext)
         model = ViewModelProvider(this)[TrailDetailModel::class.java]
         model.initialize(intent.getStringExtra(EXTRA_LOCAL_ID), intent.getStringExtra(EXTRA_CATALOG_ID))
-        findViewById<Button>(R.id.detail_back).setOnClickListener { finish() }
         findViewById<Button>(R.id.detail_primary).setOnClickListener {
             model.trail?.let {
                 setResult(RESULT_OK, Intent().putExtra(MyTrailsActivity.EXTRA_TRAIL_ID, it.id))
                 finish()
             } ?: model.download()
+        }
+        findViewById<Button>(R.id.detail_preview).setOnClickListener {
+            model.entry?.let { entry ->
+                setResult(RESULT_OK, Intent().putExtra(MainActivity.EXTRA_PREVIEW_ID, entry.id))
+                finish()
+            }
         }
         findViewById<Button>(R.id.detail_offline_action).setOnClickListener {
             model.trail?.let { trail ->
@@ -57,6 +62,7 @@ class TrailDetailActivity : AppCompatActivity() {
                     downloads.loadError != null -> startActivity(Intent(this, OfflineActivity::class.java)
                         .putExtra(MyTrailsActivity.EXTRA_TRAIL_ID, trail.id))
                     item == null -> downloads.start(trail)
+                    item.libraryState == OfflineLibraryState.DOWNLOADING -> downloads.pause(item)
                     item.libraryState == OfflineLibraryState.INCOMPLETE ||
                         item.libraryState == OfflineLibraryState.FAILED ->
                         downloads.resume(item)
@@ -80,6 +86,10 @@ class TrailDetailActivity : AppCompatActivity() {
     private fun render() {
         val trail = model.trail
         val entry = model.entry
+        if (wasDownloadingRoute && !model.downloading && trail != null) {
+            Snackbar.make(findViewById(R.id.detail_root), R.string.route_saved_snackbar, Snackbar.LENGTH_SHORT).show()
+        }
+        wasDownloadingRoute = model.downloading
         val name = entry?.name ?: trail?.name
         findViewById<TextView>(R.id.detail_name).text = name ?: getString(R.string.trail_details)
         findViewById<TextView>(R.id.detail_source).text = when {
@@ -105,7 +115,8 @@ class TrailDetailActivity : AppCompatActivity() {
         })
         val statusTrailId = trail?.id ?: entry?.id?.let(::communityTrailId)
         findViewById<Chip>(R.id.detail_aerial_chip).showAerialStatus(
-            AerialChipState.fromImagery(statusTrailId?.let { imageryState(downloads, it) }
+            if (trail?.let { downloads.packageFor(it.id)?.deleting } == true) AerialChipState.DELETING
+            else AerialChipState.fromImagery(statusTrailId?.let { imageryState(downloads, it) }
                 ?: ImageryState.CHECKING))
         findViewById<TextView>(R.id.detail_description).apply {
             text = entry?.description ?: trail?.description
@@ -129,29 +140,49 @@ class TrailDetailActivity : AppCompatActivity() {
         findViewById<LinearProgressIndicator>(R.id.detail_progress).visibility =
             if (model.loading || model.downloading) View.VISIBLE else View.GONE
         val imagery = trail?.let { imageryState(downloads, it.id) } ?: ImageryState.CHECKING
+        val packageItem = trail?.let { downloads.packageFor(it.id) }
+        val operation = offlineOperationState(trail?.let { downloads.isCreating(it.id) } == true,
+            packageItem?.deleting == true, packageItem?.libraryState ?: when {
+                downloads.loadError != null || trail?.let { downloads.errorFor(it.id) } != null -> OfflineLibraryState.FAILED
+                !downloads.loaded -> OfflineLibraryState.CHECKING
+                else -> null
+            })
         val actions = trailDetailActions(trail != null, model.downloading, imagery)
         findViewById<Button>(R.id.detail_primary).apply {
-            text = getString(if (trail != null) R.string.open_map else R.string.download_trail)
+            text = getString(when {
+                trail != null -> R.string.open_map
+                model.downloading -> R.string.downloading_route
+                model.message?.startsWith("Download failed:") == true -> R.string.retry_download
+                else -> R.string.download_trail
+            })
             visibility = if (actions.openMap || actions.downloadTrail || model.downloading) View.VISIBLE else View.GONE
             isEnabled = !model.downloading && !model.loading
         }
+        findViewById<Button>(R.id.detail_preview).apply {
+            visibility = if (entry != null && trail == null) View.VISIBLE else View.GONE
+            isEnabled = !model.loading && !model.downloading
+        }
         findViewById<TextView>(R.id.detail_offline_state).apply {
-            text = if (trail == null) "" else when (imagery) {
-                ImageryState.CHECKING, ImageryState.PREPARING -> ""
-                ImageryState.NONE -> getString(R.string.detail_aerial_absent)
-                ImageryState.DOWNLOADING -> getString(R.string.detail_aerial_downloading)
-                ImageryState.INCOMPLETE -> getString(R.string.detail_aerial_incomplete)
-                ImageryState.COMPLETE -> getString(R.string.detail_aerial_complete)
-                ImageryState.FAILED -> downloads.packageFor(trail.id)?.error ?: downloads.errorFor(trail.id)
-                    ?: downloads.loadError ?: getString(R.string.offline_failed)
-            }
+            val error = if (operation == OfflineOperationState.FAILED) packageItem?.error
+                ?: trail?.id?.let(downloads::errorFor) ?: downloads.loadError else null
+            text = if (trail == null) "" else getString(operation.label()) +
+                (error?.let { "\n$it" } ?: "")
             visibility = if (text.isBlank()) View.GONE else View.VISIBLE
+        }
+        findViewById<LinearProgressIndicator>(R.id.detail_offline_progress)
+            .showOfflineProgress(operation, packageItem?.status)
+        findViewById<TextView>(R.id.detail_offline_metrics).apply {
+            text = offlineProgressMetrics(this@TrailDetailActivity, packageItem?.status)
+            visibility = if (text.isBlank() || operation == OfflineOperationState.NONE) View.GONE else View.VISIBLE
         }
         findViewById<View>(R.id.detail_offline_card).visibility = if (trail == null) View.GONE else View.VISIBLE
         findViewById<Button>(R.id.detail_offline_action).apply {
-            visibility = if (actions.offlineAction) View.VISIBLE else View.GONE
+            visibility = if (actions.offlineAction && operation !in setOf(
+                    OfflineOperationState.DELETING, OfflineOperationState.PREPARING))
+                View.VISIBLE else View.GONE
             text = getString(when (imagery) {
-                ImageryState.COMPLETE, ImageryState.DOWNLOADING, ImageryState.PREPARING -> R.string.manage_offline
+                ImageryState.DOWNLOADING -> R.string.pause_offline
+                ImageryState.COMPLETE, ImageryState.PREPARING -> R.string.manage_offline
                 ImageryState.INCOMPLETE -> R.string.resume_offline
                 ImageryState.FAILED -> if (downloads.loadError != null) R.string.manage_offline
                     else if (trail?.let { downloads.packageFor(it.id) } == null)
@@ -171,7 +202,7 @@ class TrailDetailActivity : AppCompatActivity() {
         val row = TextView(this).apply {
             text = "$label\n$value"
             setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyLarge)
-            setPadding(0, 0, 0, (12 * resources.displayMetrics.density).toInt())
+            setPadding(0, 0, 0, resources.getDimensionPixelSize(R.dimen.space_compact))
         }
         parent.addView(row)
     }
