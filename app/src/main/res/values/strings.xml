@@ -1,6 +1,15 @@
 <resources>
     <string name="app_name">TrailRelay</string>
     <string name="recenter">Recenter and follow my location</string>
+    <string name="orientation_north_up">North Up selected. Switch to Heading Up</string>
+    <string name="orientation_heading_up">Heading Up selected. Switch to North Up</string>
+    <string name="speed_unavailable">— mph</string>
+    <string name="speed_mph">%1$d mph</string>
+    <string name="open_in_maps">Open in Maps</string>
+    <string name="choose_trail_endpoint">Choose a trail endpoint</string>
+    <string name="route_start">Start point</string>
+    <string name="route_end">End point</string>
+    <string name="no_maps_app">No map app is available to open this point.</string>
     <string name="permission_needed">Location permission is off. Tap recenter to allow location. If Android no longer prompts, enable it in app settings.</string>
     <string name="location_disabled">Location is unavailable. Enable Location in phone settings; TrailRelay will retry automatically.</string>
     <string name="location_waiting">Waiting for your location. A clear view of the sky can help.</string>

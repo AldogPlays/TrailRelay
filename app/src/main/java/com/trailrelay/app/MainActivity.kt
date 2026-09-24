@@ -2,7 +2,13 @@ package com.trailrelay.app
 
 import android.Manifest
 import android.content.Intent
+import android.content.ActivityNotFoundException
+import android.content.pm.ApplicationInfo
+import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import com.trailrelay.app.ui.MapShell
 import android.util.Log
 import android.view.View
@@ -15,13 +21,18 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.edit
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.chip.Chip
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.trailrelay.app.location.ForegroundLocation
+import com.trailrelay.app.location.SpeedEstimator
+import com.trailrelay.app.location.SpeedFix
 import com.trailrelay.app.map.AerialMap
+import com.trailrelay.app.map.MapOrientation
 import com.trailrelay.app.map.MapSelection
 import com.trailrelay.app.map.MapSelectionState
 import com.trailrelay.app.map.MapTapDecision
@@ -44,6 +55,7 @@ import com.trailrelay.app.trails.TrailDetailActivity
 import com.trailrelay.app.trails.TrailSource
 import com.trailrelay.app.trails.TrailStore
 import com.trailrelay.app.trails.fromImagery
+import com.trailrelay.app.trails.endpoints
 import com.trailrelay.app.trails.imageryState
 import com.trailrelay.app.trails.showAerialStatus
 import com.trailrelay.app.trails.showRouteStatus
@@ -86,6 +98,18 @@ class MainActivity : AppCompatActivity() {
     private var locationStatus: Int? = null
     private var mapStatus: Int? = null
     private var permissionRequested = false
+    private var orientation = MapOrientation.NORTH_UP
+    private val speedEstimator = SpeedEstimator()
+    private val speedDiagnosticsEnabled by lazy {
+        (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+    }
+    private val speedHandler = Handler(Looper.getMainLooper())
+    private val speedRefresh = object : Runnable {
+        override fun run() {
+            renderSpeed()
+            if (resumed) speedHandler.postDelayed(this, 5_000L)
+        }
+    }
 
     private val destination = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
@@ -134,14 +158,43 @@ class MainActivity : AppCompatActivity() {
         }
         mapView = findViewById(R.id.map_view)
         mapView.onCreate(savedInstanceState)
+        orientation = MapOrientation.fromPreference(getSharedPreferences(SettingsActivity.PREFERENCES, MODE_PRIVATE)
+            .getString(ORIENTATION_PREFERENCE, null))
         aerialMap = AerialMap(this, mapView, savedInstanceState) {
             mapStatus = it
             renderStatus()
         }
+        aerialMap.setOrientation(orientation)
+        renderOrientation()
         aerialMap.onTrailTap = ::chooseMapHit
-        location = ForegroundLocation(this, aerialMap::showLocation) {
+        location = ForegroundLocation(this, { fix ->
+            aerialMap.showLocation(fix)
+            val nowNanos = SystemClock.elapsedRealtimeNanos()
+            val reading = speedEstimator.accept(SpeedFix(fix.latitude, fix.longitude,
+                fix.accuracy, fix.elapsedRealtimeNanos, fix.speed.takeIf { fix.hasSpeed() }), nowNanos)
+            if (speedDiagnosticsEnabled) {
+                val ageMillis = (nowNanos - fix.elapsedRealtimeNanos) / 1_000_000L
+                Log.d("TrailRelaySpeed", "provider=${fix.provider ?: "unknown"} " +
+                    "hasSpeed=${fix.hasSpeed()} rawMps=${if (fix.hasSpeed()) fix.speed else "absent"} " +
+                    "mph=${reading.mph ?: "unavailable"} ageMs=$ageMillis " +
+                    "accuracyM=${if (fix.hasAccuracy()) fix.accuracy else "absent"} " +
+                    "state=${reading.source.name.lowercase()}")
+            }
+            renderSpeed()
+        }) {
             locationStatus = it
+            if (it == R.string.location_disabled || it == R.string.permission_needed ||
+                it == R.string.location_failed) clearSpeed()
             renderStatus()
+        }
+        findViewById<ImageButton>(R.id.orientation).setOnClickListener {
+            orientation = if (orientation == MapOrientation.NORTH_UP) MapOrientation.HEADING_UP
+                else MapOrientation.NORTH_UP
+            getSharedPreferences(SettingsActivity.PREFERENCES, MODE_PRIVATE).edit {
+                putString(ORIENTATION_PREFERENCE, orientation.name)
+            }
+            aerialMap.setOrientation(orientation)
+            renderOrientation()
         }
         status.setOnClickListener { if (mapStatus != null) aerialMap.loadStyle() }
         findViewById<ImageButton>(R.id.recenter).setOnClickListener {
@@ -156,6 +209,7 @@ class MainActivity : AppCompatActivity() {
             override fun handleOnBackPressed() { clearSelection() }
         }.also { selectionBack = it })
         findViewById<Button>(R.id.selection_clear).setOnClickListener { clearSelection() }
+        findViewById<Button>(R.id.selection_open_maps).setOnClickListener { openSelectedTrailInMaps() }
         findViewById<View>(R.id.selection_summary_content).setOnClickListener { mapShell.toggleExpanded() }
         findViewById<ImageButton>(R.id.selection_expand).setOnClickListener { mapShell.toggleExpanded() }
         findViewById<Button>(R.id.selection_details).setOnClickListener {
@@ -518,6 +572,8 @@ class MainActivity : AppCompatActivity() {
             visibility = if (text.isBlank()) View.GONE else View.VISIBLE
         }
         findViewById<Button>(R.id.selection_details).isEnabled = trail != null || entry != null
+        findViewById<Button>(R.id.selection_open_maps).visibility =
+            if (selectedTrack?.endpoints() != null) View.VISIBLE else View.GONE
         findViewById<Button>(R.id.selection_action).apply {
             visibility = if (preview || trail != null) View.VISIBLE else View.GONE
             text = getString(when {
@@ -548,6 +604,7 @@ class MainActivity : AppCompatActivity() {
         aerialMap.setLocationAllowed(allowed)
         if (!allowed) {
             location.stop()
+            clearSpeed()
             locationStatus = R.string.permission_needed
             renderStatus()
         } else if (resumed) location.start()
@@ -557,6 +614,58 @@ class MainActivity : AppCompatActivity() {
         val messages = listOfNotNull(mapStatus, locationStatus).distinct()
         status.text = messages.joinToString("\n") { getString(it) }
         status.visibility = if (messages.isEmpty()) View.GONE else View.VISIBLE
+    }
+
+    private fun renderOrientation() {
+        findViewById<ImageButton>(R.id.orientation).apply {
+            setImageResource(if (orientation == MapOrientation.NORTH_UP) R.drawable.ic_north_up
+                else R.drawable.ic_heading_up)
+            contentDescription = getString(if (orientation == MapOrientation.NORTH_UP)
+                R.string.orientation_north_up else R.string.orientation_heading_up)
+            isActivated = orientation == MapOrientation.HEADING_UP
+        }
+    }
+
+    private fun clearSpeed() {
+        speedEstimator.reset()
+        renderSpeed()
+    }
+
+    private fun renderSpeed() {
+        val mph = speedEstimator.reading(SystemClock.elapsedRealtimeNanos()).mph
+        findViewById<TextView>(R.id.speed_hud).text = if (mph == null)
+            getString(R.string.speed_unavailable) else getString(R.string.speed_mph, mph)
+    }
+
+    private fun openSelectedTrailInMaps() {
+        val endpoints = selectedTrack?.endpoints() ?: return
+        val end = endpoints.end
+        if (end == null) {
+            openMapPoint(endpoints.start)
+        } else {
+            val choices = layoutInflater.inflate(R.layout.dialog_trail_endpoint, null)
+            val dialog = MaterialAlertDialogBuilder(this).setTitle(R.string.open_in_maps)
+                .setView(choices).create()
+            choices.findViewById<Button>(R.id.open_start_point).setOnClickListener {
+                dialog.dismiss()
+                openMapPoint(endpoints.start)
+            }
+            choices.findViewById<Button>(R.id.open_end_point).setOnClickListener {
+                dialog.dismiss()
+                openMapPoint(end)
+            }
+            dialog.show()
+        }
+    }
+
+    private fun openMapPoint(point: com.trailrelay.app.trails.TrackPoint) {
+        val coordinates = "${point.latitude},${point.longitude}"
+        val uri = Uri.parse("geo:$coordinates?q=${Uri.encode(coordinates)}")
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, uri))
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(this, R.string.no_maps_app, Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onStart() {
@@ -575,10 +684,16 @@ class MainActivity : AppCompatActivity() {
             window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         resumed = true
+        aerialMap.resumeCompass()
         refreshLocation()
+        speedHandler.removeCallbacks(speedRefresh)
+        speedHandler.post(speedRefresh)
     }
     override fun onPause() {
         resumed = false
+        aerialMap.pauseCompass()
+        speedHandler.removeCallbacks(speedRefresh)
+        clearSpeed()
         window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         location.stop()
         mapView.onPause()
@@ -606,5 +721,8 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    companion object { const val EXTRA_PREVIEW_ID = "previewCatalogId" }
+    companion object {
+        const val EXTRA_PREVIEW_ID = "previewCatalogId"
+        private const val ORIENTATION_PREFERENCE = "map_orientation"
+    }
 }

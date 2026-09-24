@@ -24,6 +24,13 @@
             android:textColor="@color/trail_on_surface" android:accessibilityLiveRegion="polite"
             android:visibility="gone" />
     </LinearLayout>
+    <TextView android:id="@+id/speed_hud" android:layout_width="wrap_content"
+        android:layout_height="@dimen/touch_target" android:layout_gravity="top|end"
+        android:layout_margin="@dimen/space_content" android:gravity="center"
+        android:minWidth="72dp" android:paddingStart="@dimen/space_compact"
+        android:paddingEnd="@dimen/space_compact" android:background="@drawable/status_background"
+        android:elevation="4dp" android:text="@string/speed_unavailable"
+        android:textAppearance="?attr/textAppearanceTitleSmall" android:textColor="@color/trail_on_surface" />
 
     <FrameLayout android:id="@+id/selection_card" android:layout_width="match_parent"
         android:layout_height="0dp" android:background="?attr/colorSurface"
@@ -115,15 +122,27 @@
                             android:layout_height="wrap_content" android:layout_weight="1"
                             android:layout_marginStart="@dimen/space_related" android:text="@string/download_trail" />
                     </LinearLayout>
+                    <com.google.android.material.button.MaterialButton android:id="@+id/selection_open_maps"
+                        style="@style/Widget.TrailRelay.OutlinedButton" android:layout_width="match_parent"
+                        android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_related"
+                        android:text="@string/open_in_maps" android:visibility="gone" />
                 </LinearLayout>
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
     </FrameLayout>
 
-    <ImageButton android:id="@+id/recenter" android:layout_width="@dimen/touch_target"
-        android:layout_height="@dimen/touch_target" android:layout_gravity="bottom|end"
+    <LinearLayout android:id="@+id/location_controls" android:layout_width="@dimen/touch_target"
+        android:layout_height="wrap_content" android:layout_gravity="bottom|end"
         android:layout_marginEnd="@dimen/space_content" android:layout_marginBottom="@dimen/space_content"
-        android:background="@drawable/recenter_background" android:contentDescription="@string/recenter"
-        android:elevation="4dp" android:padding="@dimen/space_compact"
-        android:src="@drawable/ic_recenter" android:tint="@color/trail_on_surface" />
+        android:orientation="vertical" android:elevation="4dp">
+        <ImageButton android:id="@+id/orientation" android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target" android:background="@drawable/recenter_background"
+            android:padding="@dimen/space_compact" android:src="@drawable/ic_north_up"
+            android:tint="@color/trail_on_surface" android:contentDescription="@string/orientation_north_up" />
+        <ImageButton android:id="@+id/recenter" android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target" android:layout_marginTop="@dimen/space_related"
+            android:background="@drawable/recenter_background" android:contentDescription="@string/recenter"
+            android:padding="@dimen/space_compact" android:src="@drawable/ic_recenter"
+            android:tint="@color/trail_on_surface" />
+    </LinearLayout>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

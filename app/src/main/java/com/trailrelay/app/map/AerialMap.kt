@@ -8,6 +8,7 @@ import android.graphics.PointF
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import com.trailrelay.app.R
 import com.trailrelay.app.location.ForegroundLocation
@@ -18,6 +19,8 @@ import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.location.LocationComponentActivationOptions
 import org.maplibre.android.location.LocationComponentOptions
+import org.maplibre.android.location.CompassEngine
+import org.maplibre.android.location.CompassListener
 import org.maplibre.android.location.modes.CameraMode
 import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
@@ -36,7 +39,21 @@ class AerialMap(
     private var style: Style? = null
     private var locationAllowed = false
     private var latest: Location? = null
-    private var following = state?.getBoolean("following", true) ?: true
+    private var compassEngine: CompassEngine? = null
+    private var compassActive = false
+    private var lastHeading: Float? = null
+    private var headingTimeMillis = 0L
+    private val compassListener = object : CompassListener {
+        override fun onCompassChanged(heading: Float) {
+            if (heading.isFinite()) {
+                lastHeading = heading
+                headingTimeMillis = SystemClock.elapsedRealtime()
+            }
+        }
+        override fun onCompassAccuracyChange(status: Int) = Unit
+    }
+    private val follow = FollowState(MapOrientation.NORTH_UP,
+        state?.getBoolean("following", true) ?: true)
     private var centered = state?.getBoolean("centered", false) ?: false
     private var selectedTrail: Pair<Trail, GpxTrack>? = null
     private var browseTrails: Map<String, GpxTrack> = emptyMap()
@@ -95,7 +112,10 @@ class AerialMap(
                 }
                 ready.addOnCameraMoveStartedListener { reason ->
                     if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
-                        following = false
+                        follow.pan()
+                        if (ready.locationComponent.isLocationComponentActivated) {
+                            ready.locationComponent.cameraMode = CameraMode.NONE
+                        }
                         fitTrailPending = false
                         trailCameraUntouched = false
                     }
@@ -142,7 +162,8 @@ class AerialMap(
         browseVisible = false
         trailCameraUntouched = fit
         if (fit) {
-            following = false
+            follow.pan()
+            stopCameraTracking()
             centered = true
             fitTrailPending = true
         }
@@ -225,6 +246,50 @@ class AerialMap(
         updateLocationComponent()
     }
 
+    fun setOrientation(orientation: MapOrientation) {
+        follow.orientation = orientation
+        if (follow.following) {
+            applyCameraMode()
+        } else {
+            val bearing = orientation.bearingWhilePanned(lastHeading,
+                SystemClock.elapsedRealtime() - headingTimeMillis) ?: return
+            map?.moveCamera(CameraUpdateFactory.bearingTo(bearing))
+        }
+    }
+
+    fun resumeCompass() {
+        compassActive = true
+        subscribeCompass()
+    }
+
+    fun pauseCompass() {
+        compassActive = false
+        compassEngine?.removeCompassListener(compassListener)
+        compassEngine = null
+        lastHeading = null
+        headingTimeMillis = 0L
+    }
+
+    private fun subscribeCompass() {
+        if (!compassActive) return
+        val engine = map?.locationComponent?.takeIf { it.isLocationComponentActivated }?.compassEngine
+        if (engine === compassEngine) return
+        compassEngine?.removeCompassListener(compassListener)
+        compassEngine = engine
+        engine?.addCompassListener(compassListener)
+    }
+
+    private fun stopCameraTracking() {
+        map?.locationComponent?.takeIf { it.isLocationComponentActivated }?.cameraMode = CameraMode.NONE
+    }
+
+    private fun applyCameraMode() {
+        val component = map?.locationComponent ?: return
+        if (!locationAllowed || !component.isLocationComponentActivated || !follow.following) return
+        component.cameraMode = if (follow.orientation == MapOrientation.HEADING_UP)
+            CameraMode.TRACKING_COMPASS else CameraMode.TRACKING_GPS_NORTH
+    }
+
     @SuppressLint("MissingPermission") // Activity supplies the current foreground permission state.
     private fun updateLocationComponent() {
         val ready = map ?: return
@@ -244,10 +309,12 @@ class AerialMap(
                         .build()
                 )
                 component.cameraMode = CameraMode.NONE
-                component.renderMode = RenderMode.NORMAL
+                component.renderMode = RenderMode.COMPASS
             }
             if (component.isLocationComponentActivated) {
                 component.isLocationComponentEnabled = locationAllowed
+                subscribeCompass()
+                if (locationAllowed && latest?.let(ForegroundLocation::isUsable) == true) applyCameraMode()
             }
         } catch (error: RuntimeException) {
             Log.e(TAG, "Location indicator initialization failed", error)
@@ -262,9 +329,10 @@ class AerialMap(
         if (ready.locationComponent.isLocationComponentActivated) {
             ready.locationComponent.forceLocationUpdate(location)
         }
-        if (following) {
+        if (follow.following && ready.locationComponent.isLocationComponentActivated) {
             val zoom = if (centered) ready.cameraPosition.zoom else INITIAL_ZOOM
-            ready.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(location), zoom))
+            if (!centered) ready.moveCamera(CameraUpdateFactory.zoomTo(zoom))
+            applyCameraMode()
             centered = true
         }
     }
@@ -272,7 +340,7 @@ class AerialMap(
     fun recenter(): Boolean {
         trailCameraUntouched = false
         fitTrailPending = false
-        following = true
+        follow.recenter()
         val location = latest?.takeIf(ForegroundLocation::isUsable) ?: return false
         if (map == null || style == null) return false
         centered = false
@@ -282,11 +350,12 @@ class AerialMap(
 
     fun saveState(state: Bundle) {
         state.putBoolean("fitTrailPending", fitTrailPending)
-        state.putBoolean("following", following)
+        state.putBoolean("following", follow.following)
         state.putBoolean("centered", centered)
     }
 
     fun destroy() {
+        pauseCompass()
         destroyed = true
         handler.removeCallbacksAndMessages(null)
         map = null

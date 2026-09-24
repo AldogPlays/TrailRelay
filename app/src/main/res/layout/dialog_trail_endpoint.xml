@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:paddingStart="@dimen/space_content"
+    android:paddingEnd="@dimen/space_content" android:paddingBottom="@dimen/space_content">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/space_related"
+        android:text="@string/choose_trail_endpoint"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="@color/trail_on_surface_variant" />
+    <com.google.android.material.button.MaterialButton android:id="@+id/open_start_point"
+        style="@style/Widget.TrailRelay.ExploreRow" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:text="@string/route_start" />
+    <com.google.android.material.button.MaterialButton android:id="@+id/open_end_point"
+        style="@style/Widget.TrailRelay.ExploreRow" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:text="@string/route_end" />
+</LinearLayout>

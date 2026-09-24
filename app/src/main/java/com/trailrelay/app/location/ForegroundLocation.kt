@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.content.pm.ApplicationInfo
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
@@ -29,6 +30,9 @@ class ForegroundLocation(
     private val handler = Handler(Looper.getMainLooper())
     private var started = false
     private var latest: Location? = null
+    private val speedDiagnosticsEnabled by lazy {
+        (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+    }
     private val waiting = Runnable { onStatus(R.string.location_waiting) }
     private val providersChanged = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -92,16 +96,35 @@ class ForegroundLocation(
     }
 
     override fun onLocationChanged(location: Location) {
-        if (!started || !isUsable(location)) return
+        if (!started) return
+        if (!isUsable(location)) {
+            logFiltered(location, "unusable")
+            return
+        }
         val previous = latest
         // Prevent a coarse network fix from displacing a recent, more accurate GPS fix.
-        if (previous != null && location.elapsedRealtimeNanos < previous.elapsedRealtimeNanos) return
+        if (previous != null && location.elapsedRealtimeNanos < previous.elapsedRealtimeNanos) {
+            logFiltered(location, "older_than_latest")
+            return
+        }
         if (previous != null && ageMillis(previous) < 15_000 &&
-            location.accuracy > previous.accuracy * 2) return
+            location.accuracy > previous.accuracy * 2) {
+            logFiltered(location, "less_accurate")
+            return
+        }
         latest = Location(location)
         handler.removeCallbacks(waiting)
         onStatus(null)
         onLocation(Location(location))
+    }
+
+    private fun logFiltered(location: Location, reason: String) {
+        if (!speedDiagnosticsEnabled) return
+        Log.d("TrailRelaySpeed", "provider=${location.provider ?: "unknown"} " +
+            "hasSpeed=${location.hasSpeed()} rawMps=${if (location.hasSpeed()) location.speed else "absent"} " +
+            "mph=unavailable ageMs=${ageMillis(location)} " +
+            "accuracyM=${if (location.hasAccuracy()) location.accuracy else "absent"} " +
+            "state=filtered_$reason")
     }
 
     override fun onProviderEnabled(provider: String) {
