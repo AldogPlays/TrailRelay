@@ -1,15 +1,17 @@
 # TrailRelay
 
-TrailRelay is an **early-alpha, offline-first Android trail navigation app**, maintained by Jeffrey Conton as a solo project.
+TrailRelay is an **offline-first Android trail navigation app**, maintained by Jeffrey Conton as a solo project.
 
 Open the app → see your location on USGS aerial imagery → import or download a GPX trail → open the trail → download offline map coverage → use it without network access.
 
 ## What works today
 
 - USGS / The National Map aerial imagery with foreground GPS location, follow, and recenter.
-- Local GPX import, a persistent **My Trails** library, and GPX trail rendering.
-- A public community trail catalog with local search/filtering and GPX downloads.
-- Offline aerial-map packages around locally stored trails, with download progress, pause/resume, and removal.
+- A map-first Browse view of saved GPX trails, plus a selected-trail details sheet and overlapping-route chooser.
+- Local GPX import and a persistent **My Trails** library.
+- Community search, filtering, route preview, and GPX downloads.
+- **Downloads & Storage** for route files and offline aerial packages, with progress, pause/resume, and separate removal.
+- **Settings** with Keep screen awake.
 - No TrailRelay account, backend, or user API key required.
 
 TrailRelay is Android-only, written in Kotlin with Android Views/XML and MapLibre Native. It supports Android 8.0 (API 26) and newer.
@@ -20,11 +22,11 @@ Open a locally stored trail and choose **Download Offline**. Review the coverage
 
 Coverage currently uses the trail's bounding box with about 1.5 km of padding on each side, at zooms 12–16. Large areas are rejected before downloading. Imagery outside the downloaded area or zoom range may need a network connection. An interrupted download can be resumed from the trail's offline screen.
 
-## Alpha status
+## Release and safety
 
-The current release candidate is **0.1.0 (early alpha)**. See the [release notes](docs/release-notes-0.1.0.md). Release APKs will appear under [GitHub Releases](https://github.com/AldogPlays/TrailRelay/releases) once published.
+The current release is **0.2.0**. See the [release notes](docs/release-notes-0.2.0.md) and [GitHub Releases](https://github.com/AldogPlays/TrailRelay/releases).
 
-TrailRelay is an early solo project. Trail and catalog metadata may be incomplete, and downloaded coverage should be checked before relying on it remotely. You are responsible for checking trail legality, closures, land access, and safe navigation. Keep another navigation and safety option available; TrailRelay should not be your sole system in remote areas.
+TrailRelay is a solo project. Trail and catalog metadata may be incomplete, and downloaded coverage should be checked before relying on it remotely. You are responsible for checking trail legality, closures, land access, and safe navigation. Keep another navigation and safety option available; TrailRelay should not be your sole system in remote areas.
 
 ## Community trails and maps
 
