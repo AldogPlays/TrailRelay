@@ -31,6 +31,7 @@ class MapShell(activity: AppCompatActivity) {
     private val content = activity.findViewById<LinearLayout>(R.id.selection_content)
     private val scroll = activity.findViewById<View>(R.id.selection_scroll)
     private val locationControls = activity.findViewById<LinearLayout>(R.id.location_controls)
+    private val mapControl = activity.findViewById<ImageButton>(R.id.map_layers)
     private val speedHud = activity.findViewById<View>(R.id.speed_hud)
     private val expandButton = activity.findViewById<ImageButton>(R.id.selection_expand)
     private val controller = WindowInsetsControllerCompat(window, root)
@@ -42,7 +43,7 @@ class MapShell(activity: AppCompatActivity) {
     private var statusInset = 0
     private var selectionVisible = false
     private var statusSurfaceShown = false
-    private var locationControlsHiding = false
+    private val mapControls = listOf<View>(mapControl, locationControls)
 
     init {
         controller.isAppearanceLightStatusBars = false
@@ -58,24 +59,23 @@ class MapShell(activity: AppCompatActivity) {
                     BottomSheetBehavior.STATE_COLLAPSED -> {
                         expanded.visibility = View.GONE
                         updateExpandAffordance(false)
-                        placeRecenterAboveSheet()
+                        placeControlsAboveCollapsedSheet()
+                        updateStatusBarSurface(false)
                     }
                     BottomSheetBehavior.STATE_EXPANDED -> {
                         expanded.visibility = View.VISIBLE
                         updateExpandAffordance(true)
-                        hideLocationControls()
+                        updateMapControlVisibility()
                         updateStatusBarSurface(true)
                     }
-                    BottomSheetBehavior.STATE_DRAGGING, BottomSheetBehavior.STATE_SETTLING ->
-                        hideLocationControls()
                 }
             }
 
             override fun onSlide(bottomSheet: View, slideOffset: Float) {
                 if (!selectionVisible) return
                 expanded.visibility = if (slideOffset > 0.01f) View.VISIBLE else View.GONE
-                if (slideOffset > 0.01f) {
-                    hideLocationControls()
+                updateMapControlVisibility()
+                if (slideOffset > 0f) {
                     updateStatusBarSurface(bottomSheet.top <= statusInset)
                 }
             }
@@ -99,7 +99,11 @@ class MapShell(activity: AppCompatActivity) {
             }
             locationControls.layoutParams = (locationControls.layoutParams as CoordinatorLayout.LayoutParams).apply {
                 rightMargin = spacing + bars.right
-                bottomMargin = if (selectionVisible) bottomMarginAboveSheet() else spacing + bars.bottom
+                bottomMargin = if (selectionVisible) collapsedControlsBottomMargin() else spacing + bars.bottom
+            }
+            mapControl.layoutParams = (mapControl.layoutParams as CoordinatorLayout.LayoutParams).apply {
+                leftMargin = spacing + bars.left
+                bottomMargin = if (selectionVisible) collapsedControlsBottomMargin() else spacing + bars.bottom
             }
             scroll.setPadding(scroll.paddingLeft, scroll.paddingTop, scroll.paddingRight, navigationInset)
             val protection = activity.resources.getDimensionPixelSize(R.dimen.space_section)
@@ -127,20 +131,20 @@ class MapShell(activity: AppCompatActivity) {
         if (visible) {
             sheet.visibility = View.VISIBLE
             setNavigationSurface(true)
-            locationControls.visibility = View.GONE
+            updateMapControlVisibility()
             refreshContentHeight()
             sheet.post(::collapseSelection)
         } else {
             behavior.state = BottomSheetBehavior.STATE_COLLAPSED
             expanded.visibility = View.GONE
             sheet.visibility = View.GONE
-            locationControls.animate().cancel()
-            locationControlsHiding = false
-            locationControls.alpha = 1f
-            locationControls.visibility = View.VISIBLE
             locationControls.layoutParams = (locationControls.layoutParams as CoordinatorLayout.LayoutParams).apply {
                 bottomMargin = spacing + navigationInset
             }
+            mapControl.layoutParams = (mapControl.layoutParams as CoordinatorLayout.LayoutParams).apply {
+                bottomMargin = spacing + navigationInset
+            }
+            updateMapControlVisibility()
             setNavigationSurface(false)
             updateStatusBarSurface(false)
         }
@@ -186,7 +190,7 @@ class MapShell(activity: AppCompatActivity) {
         if (behavior.state == BottomSheetBehavior.STATE_COLLAPSED) {
             expanded.visibility = View.GONE
             updateExpandAffordance(false)
-            root.post(::placeRecenterAboveSheet)
+            placeControlsAboveCollapsedSheet()
         }
     }
 
@@ -195,33 +199,45 @@ class MapShell(activity: AppCompatActivity) {
         if (!selectionVisible || summaryHeight == 0) return
         behavior.peekHeight = (summaryHeight + navigationInset).coerceAtMost(
             (sheet.layoutParams as CoordinatorLayout.LayoutParams).height)
-        if (behavior.state == BottomSheetBehavior.STATE_COLLAPSED) root.post(::placeRecenterAboveSheet)
+        placeControlsAboveCollapsedSheet()
     }
 
-    private fun placeRecenterAboveSheet() {
-        if (!selectionVisible || behavior.state != BottomSheetBehavior.STATE_COLLAPSED) return
-        locationControls.layoutParams = (locationControls.layoutParams as CoordinatorLayout.LayoutParams).apply {
-            bottomMargin = bottomMarginAboveSheet()
+    private fun placeControlsAboveCollapsedSheet() {
+        if (!selectionVisible) return
+        val margin = collapsedControlsBottomMargin()
+        val locationParams = locationControls.layoutParams as CoordinatorLayout.LayoutParams
+        if (locationParams.bottomMargin != margin) {
+            locationParams.bottomMargin = margin
+            locationControls.layoutParams = locationParams
         }
-        locationControls.animate().cancel()
-        locationControlsHiding = false
-        locationControls.alpha = 1f
-        locationControls.visibility = View.VISIBLE
-        updateStatusBarSurface(false)
+        val mapParams = mapControl.layoutParams as CoordinatorLayout.LayoutParams
+        if (mapParams.bottomMargin != margin) {
+            mapParams.bottomMargin = margin
+            mapControl.layoutParams = mapParams
+        }
+        updateMapControlVisibility()
     }
 
-    private fun hideLocationControls() {
-        if (locationControls.visibility != View.VISIBLE || locationControlsHiding) return
-        locationControlsHiding = true
-        locationControls.animate().alpha(0f).setDuration(90L).withEndAction {
-            locationControlsHiding = false
-            if (behavior.state != BottomSheetBehavior.STATE_COLLAPSED) {
-                locationControls.visibility = View.GONE
-            }
-        }.start()
+    private fun updateMapControlVisibility() {
+        val alpha = if (!selectionVisible) 1f else if (root.height == 0) 0f else {
+            val controlBottomMargin = minOf(
+                (locationControls.layoutParams as CoordinatorLayout.LayoutParams).bottomMargin,
+                (mapControl.layoutParams as CoordinatorLayout.LayoutParams).bottomMargin)
+            val clearance = sheet.top - (root.height - controlBottomMargin)
+            // Use the collapsed gap as the fade range, so controls vanish before overlap.
+            (clearance.toFloat() / gap.coerceAtLeast(1)).coerceIn(0f, 1f)
+        }
+        mapControls.forEach {
+            it.alpha = alpha
+            it.visibility = if (alpha <= 0.05f) View.INVISIBLE else View.VISIBLE
+        }
     }
 
-    private fun bottomMarginAboveSheet(): Int = (root.height - sheet.top + gap).coerceAtLeast(navigationInset + spacing)
+    private fun collapsedControlsBottomMargin(): Int {
+        val peekHeight = behavior.peekHeight.takeIf { it >= 0 }
+            ?: (maxOf(summary.height, summary.measuredHeight) + navigationInset)
+        return (peekHeight + gap).coerceAtLeast(navigationInset + spacing)
+    }
 
     private fun updateExpandAffordance(expanded: Boolean) {
         expandButton.apply {

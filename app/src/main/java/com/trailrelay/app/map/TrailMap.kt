@@ -29,7 +29,7 @@ import org.maplibre.android.maps.Style
 import org.maplibre.android.tile.TileOperation
 
 /** Map styling, location display, and deliberately simple camera following. */
-class AerialMap(
+class TrailMap(
     private val context: Context,
     private val view: MapView,
     state: Bundle?,
@@ -37,6 +37,9 @@ class AerialMap(
 ) {
     private var map: MapLibreMap? = null
     private var style: Style? = null
+    private var locationStyle: Style? = null
+    private var mode = MapMode.AERIAL
+    private val styleRequests = MapModeRequests()
     private var locationAllowed = false
     private var latest: Location? = null
     private var compassEngine: CompassEngine? = null
@@ -53,19 +56,23 @@ class AerialMap(
         override fun onCompassAccuracyChange(status: Int) = Unit
     }
     private val follow = FollowState(MapOrientation.NORTH_UP,
-        state?.getBoolean("following", true) ?: true)
+        state?.getBoolean("following", true) ?: true,
+        state?.getBoolean("northResetPending", false) ?: false)
     private var centered = state?.getBoolean("centered", false) ?: false
     private var selectedTrail: Pair<Trail, GpxTrack>? = null
     private var browseTrails: Map<String, GpxTrack> = emptyMap()
     private var browseVisible = true
     var onTrailTap: ((List<String>) -> Unit)? = null
+    var onPan: (() -> Unit)? = null
+    val northResetPending get() = follow.northResetPending
+    fun nextOrientationPress() = follow.nextOrientationPress()
     private var fitTrailPending = state?.getBoolean("fitTrailPending") ?: false
     private var destroyed = false
     private var offlineTrailId: String? = null
     private var trailCameraUntouched = false
     private val handler = Handler(Looper.getMainLooper())
-    private val imageryTimeout = Runnable {
-        Log.w(TAG, "No USGS raster tile loaded within 30 seconds")
+    private val tileTimeout = Runnable {
+        Log.w(TAG, "No USGS map tile loaded within 30 seconds")
         onError(R.string.map_failed)
     }
 
@@ -75,23 +82,23 @@ class AerialMap(
             reportMapError()
         }
         view.addOnTileActionListener { operation, x, y, z, _, _, source ->
-            if (source == "usgs-imagery") {
+            if (style != null && source == mode.rasterSourceId) {
                 if (operation == TileOperation.Error) {
-                    Log.e(TAG, "USGS raster tile failed: z=$z y=$y x=$x")
+                    Log.e(TAG, "USGS map tile failed: z=$z y=$y x=$x")
                     reportMapError()
                 } else if (operation == TileOperation.LoadFromNetwork ||
                     operation == TileOperation.LoadFromCache) {
                     handler.post {
                         if (!destroyed) {
-                            handler.removeCallbacks(imageryTimeout)
+                            handler.removeCallbacks(tileTimeout)
                         }
                     }
                 }
             }
         }
         view.addOnDidFinishLoadingMapListener {
-            if (!destroyed) {
-                handler.removeCallbacks(imageryTimeout)
+            if (!destroyed && style != null) {
+                handler.removeCallbacks(tileTimeout)
                 onError(null)
             }
         }
@@ -113,6 +120,7 @@ class AerialMap(
                 ready.addOnCameraMoveStartedListener { reason ->
                     if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
                         follow.pan()
+                        onPan?.invoke()
                         if (ready.locationComponent.isLocationComponentActivated) {
                             ready.locationComponent.cameraMode = CameraMode.NONE
                         }
@@ -139,19 +147,27 @@ class AerialMap(
         handler.post { if (!destroyed) onError(R.string.map_failed) }
     }
 
-    fun loadStyle() {
+    fun loadStyle(requestedMode: MapMode = mode) {
+        mode = requestedMode
         val ready = map ?: return
+        val request = styleRequests.next()
+        if (request > 1) {
+            fitTrailPending = false
+            trailCameraUntouched = false
+        }
         style = null
-        handler.removeCallbacks(imageryTimeout)
-        handler.postDelayed(imageryTimeout, 30_000)
-        ready.setStyle(Style.Builder().fromUri(AERIAL_STYLE_URI)) { loaded ->
-            if (!destroyed) {
+        handler.removeCallbacks(tileTimeout)
+        handler.postDelayed(tileTimeout, 30_000)
+        ready.setStyle(Style.Builder().fromUri(requestedMode.styleUri)) { loaded ->
+            if (!destroyed && (!styleRequests.isCurrent(request) || loaded.uri != requestedMode.styleUri)) {
+                if (ready.style === loaded) loadStyle(mode)
+            } else if (!destroyed) {
                 style = loaded
-                Log.i(TAG, "Bundled USGS raster style loaded")
+                Log.i(TAG, "Bundled USGS ${requestedMode.id} style loaded")
                 onError(null)
                 updateLocationComponent()
                 renderTrails()
-                fitSelectedTrail()
+                if (request == 1) fitSelectedTrail()
                 latest?.let(::showLocation)
             }
         }
@@ -162,7 +178,7 @@ class AerialMap(
         browseVisible = false
         trailCameraUntouched = fit
         if (fit) {
-            follow.pan()
+            follow.suspendFollow()
             stopCameraTracking()
             centered = true
             fitTrailPending = true
@@ -299,7 +315,7 @@ class AerialMap(
         val loaded = style ?: return
         try {
             val component = ready.locationComponent
-            if (locationAllowed && !component.isLocationComponentActivated) {
+            if (locationAllowed && locationStyle !== loaded) {
                 component.activateLocationComponent(
                     LocationComponentActivationOptions.builder(context, loaded)
                         .useDefaultLocationEngine(false)
@@ -311,7 +327,8 @@ class AerialMap(
                             .build())
                         .build()
                 )
-                component.cameraMode = CameraMode.NONE
+                locationStyle = loaded
+                if (!follow.following) component.cameraMode = CameraMode.NONE
                 component.renderMode = RenderMode.COMPASS
             }
             if (component.isLocationComponentActivated) {
@@ -354,6 +371,7 @@ class AerialMap(
     fun saveState(state: Bundle) {
         state.putBoolean("fitTrailPending", fitTrailPending)
         state.putBoolean("following", follow.following)
+        state.putBoolean("northResetPending", follow.northResetPending)
         state.putBoolean("centered", centered)
     }
 

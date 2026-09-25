@@ -48,6 +48,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.material)
     implementation(libs.maplibre)
+    implementation(libs.maplibre.turf)
     testImplementation(libs.junit)
     // Android supplies org.json at runtime; JVM tests need its implementation.
     testImplementation("org.json:json:20240303")

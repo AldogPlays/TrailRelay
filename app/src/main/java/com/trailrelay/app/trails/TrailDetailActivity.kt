@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import com.trailrelay.app.R
 import com.trailrelay.app.MainActivity
+import com.trailrelay.app.map.MapMode
 import com.trailrelay.app.offline.OfflineActivity
 import com.trailrelay.app.offline.OfflineDownloads
 import com.trailrelay.app.offline.OfflineLibraryState
@@ -33,6 +34,7 @@ class TrailDetailActivity : AppCompatActivity() {
     private lateinit var downloads: OfflineDownloads
     private var wasDownloadingRoute = false
     private val offlineListener: () -> Unit = { render() }
+    private val mapMode get() = MapMode.selected(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,11 +57,11 @@ class TrailDetailActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.detail_offline_action).setOnClickListener {
             model.trail?.let { trail ->
-                val item = downloads.packageFor(trail.id)
+                val item = downloads.packageFor(trail.id, mapMode)
                 when {
                     downloads.loadError != null -> startActivity(Intent(this, OfflineActivity::class.java)
                         .putExtra(MyTrailsActivity.EXTRA_TRAIL_ID, trail.id))
-                    item == null -> downloads.start(trail)
+                    item == null -> downloads.start(trail, mapMode)
                     item.libraryState == OfflineLibraryState.DOWNLOADING -> downloads.pause(item)
                     item.libraryState == OfflineLibraryState.INCOMPLETE ||
                         item.libraryState == OfflineLibraryState.FAILED ->
@@ -116,9 +118,9 @@ class TrailDetailActivity : AppCompatActivity() {
         })
         val statusTrailId = trail?.id ?: entry?.id?.let(::communityTrailId)
         findViewById<Chip>(R.id.detail_aerial_chip).showAerialStatus(
-            if (trail?.let { downloads.packageFor(it.id)?.deleting } == true) AerialChipState.DELETING
-            else AerialChipState.fromImagery(statusTrailId?.let { imageryState(downloads, it) }
-                ?: ImageryState.CHECKING))
+            if (trail?.let { downloads.packageFor(it.id, mapMode)?.deleting } == true) AerialChipState.DELETING
+            else AerialChipState.fromImagery(statusTrailId?.let { imageryState(downloads, it, mapMode) }
+                ?: ImageryState.CHECKING), mapMode)
         findViewById<TextView>(R.id.detail_description).apply {
             text = entry?.description ?: trail?.description
             visibility = if (text.isNullOrBlank()) View.GONE else View.VISIBLE
@@ -140,11 +142,11 @@ class TrailDetailActivity : AppCompatActivity() {
         }
         findViewById<LinearProgressIndicator>(R.id.detail_progress).visibility =
             if (model.loading || model.downloading) View.VISIBLE else View.GONE
-        val imagery = trail?.let { imageryState(downloads, it.id) } ?: ImageryState.CHECKING
-        val packageItem = trail?.let { downloads.packageFor(it.id) }
-        val operation = offlineOperationState(trail?.let { downloads.isCreating(it.id) } == true,
+        val imagery = trail?.let { imageryState(downloads, it.id, mapMode) } ?: ImageryState.CHECKING
+        val packageItem = trail?.let { downloads.packageFor(it.id, mapMode) }
+        val operation = offlineOperationState(trail?.let { downloads.isCreating(it.id, mapMode) } == true,
             packageItem?.deleting == true, packageItem?.libraryState ?: when {
-                downloads.loadError != null || trail?.let { downloads.errorFor(it.id) } != null -> OfflineLibraryState.FAILED
+                downloads.loadError != null || trail?.let { downloads.errorFor(it.id, mapMode) } != null -> OfflineLibraryState.FAILED
                 !downloads.loaded -> OfflineLibraryState.CHECKING
                 else -> null
             })
@@ -166,8 +168,8 @@ class TrailDetailActivity : AppCompatActivity() {
         }
         findViewById<TextView>(R.id.detail_offline_state).apply {
             val error = if (operation == OfflineOperationState.FAILED) packageItem?.error
-                ?: trail?.id?.let(downloads::errorFor) ?: downloads.loadError else null
-            text = if (trail == null) "" else getString(operation.label()) +
+                ?: trail?.id?.let { downloads.errorFor(it, mapMode) } ?: downloads.loadError else null
+            text = if (trail == null) "" else getString(mapMode.label) + " · " + getString(operation.label()) +
                 (error?.let { "\n$it" } ?: "")
             visibility = if (text.isBlank()) View.GONE else View.VISIBLE
         }
@@ -187,7 +189,7 @@ class TrailDetailActivity : AppCompatActivity() {
                 ImageryState.COMPLETE, ImageryState.PREPARING -> R.string.manage_offline
                 ImageryState.INCOMPLETE -> R.string.resume_offline
                 ImageryState.FAILED -> if (downloads.loadError != null) R.string.manage_offline
-                    else if (trail?.let { downloads.packageFor(it.id) } == null)
+                    else if (trail?.let { downloads.packageFor(it.id, mapMode) } == null)
                     R.string.download_offline_map else R.string.resume_offline
                 else -> R.string.download_offline_map
             })

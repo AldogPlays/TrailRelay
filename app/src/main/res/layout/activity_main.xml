@@ -145,4 +145,10 @@
             android:padding="@dimen/space_compact" android:src="@drawable/ic_recenter"
             android:tint="@color/trail_on_surface" />
     </LinearLayout>
+    <ImageButton android:id="@+id/map_layers" android:layout_width="@dimen/touch_target"
+        android:layout_height="@dimen/touch_target" android:layout_gravity="bottom|start"
+        android:layout_marginStart="@dimen/space_content" android:layout_marginBottom="@dimen/space_content"
+        android:background="@drawable/recenter_background" android:padding="@dimen/space_compact"
+        android:src="@drawable/ic_map_layers" android:tint="@color/trail_on_surface"
+        android:contentDescription="@string/map_selector_description" android:elevation="4dp" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

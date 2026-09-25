@@ -59,4 +59,41 @@ class MapOrientationTest {
             assertEquals(orientation, state.orientation)
         }
     }
+
+    @Test fun everyPanRequiresNorthFirstThenHeadingCanResumeFollow() {
+        for (initial in MapOrientation.entries) {
+            val state = FollowState(initial)
+            state.pan()
+            assertEquals(MapOrientation.NORTH_UP, state.nextOrientationPress())
+            assertTrue(state.northResetPending)
+            assertFalse(state.selectOrientation(state.nextOrientationPress(), userInitiated = true))
+            assertEquals(MapOrientation.NORTH_UP, state.orientation)
+            assertFalse(state.following)
+            assertFalse(state.northResetPending)
+            assertEquals(MapOrientation.HEADING_UP, state.nextOrientationPress())
+            assertTrue(state.selectOrientation(state.nextOrientationPress(), userInitiated = true))
+            assertTrue(state.following)
+            assertEquals(MapOrientation.HEADING_UP, state.orientation)
+        }
+    }
+
+    @Test fun aSecondPanRequiresNorthAgainAndRecenterClearsPending() {
+        val state = FollowState(MapOrientation.NORTH_UP)
+        state.pan()
+        state.selectOrientation(state.nextOrientationPress(), userInitiated = true)
+        state.pan()
+        assertEquals(MapOrientation.NORTH_UP, state.nextOrientationPress())
+        state.recenter()
+        assertFalse(state.northResetPending)
+        assertEquals(MapOrientation.HEADING_UP, state.nextOrientationPress())
+    }
+
+    @Test fun programmaticTrailSelectionSuspendsFollowWithoutClaimingManualPan() {
+        val state = FollowState(MapOrientation.HEADING_UP)
+        state.pan()
+        state.suspendFollow()
+        assertFalse(state.following)
+        assertFalse(state.northResetPending)
+        assertEquals(MapOrientation.NORTH_UP, state.nextOrientationPress())
+    }
 }

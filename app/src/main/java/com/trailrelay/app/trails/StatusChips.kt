@@ -6,6 +6,7 @@ import com.google.android.material.chip.Chip
 import com.google.android.material.color.MaterialColors
 import com.trailrelay.app.R
 import com.trailrelay.app.offline.OfflineLibraryState
+import com.trailrelay.app.map.MapMode
 
 enum class RouteChipState { SAVED, NOT_SAVED, CHECKING, MISSING, UNKNOWN, ERROR }
 enum class AerialChipState {
@@ -46,7 +47,7 @@ fun Chip.showRouteStatus(state: RouteChipState) {
     show(pill)
 }
 
-fun Chip.showAerialStatus(state: AerialChipState) {
+fun Chip.showAerialStatus(state: AerialChipState, mode: MapMode = MapMode.AERIAL) {
     val pill = when (state) {
         AerialChipState.OFFLINE -> Pill(R.string.chip_aerial_offline, R.drawable.ic_status_check, Tone.COMPLETE)
         AerialChipState.NOT_OFFLINE -> Pill(R.string.chip_not_offline, R.drawable.ic_status_download, Tone.NEUTRAL)
@@ -59,6 +60,14 @@ fun Chip.showAerialStatus(state: AerialChipState) {
         AerialChipState.DELETING -> Pill(R.string.chip_deleting_map, R.drawable.ic_status_clock, Tone.ACTIVE)
     }
     show(pill)
+    if (state != AerialChipState.UNKNOWN) {
+        val status = when (state) {
+            AerialChipState.OFFLINE -> context.getString(R.string.map_status_offline)
+            AerialChipState.ERROR -> context.getString(R.string.map_status_error)
+            else -> context.getString(pill.label)
+        }
+        text = "${context.getString(mode.label)} · $status"
+    }
 }
 
 private fun Chip.show(pill: Pill) {

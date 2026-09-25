@@ -14,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.chip.Chip
 import com.trailrelay.app.R
+import com.trailrelay.app.map.MapMode
 import com.trailrelay.app.offline.OfflineDownloads
 import org.maplibre.android.MapLibre
 import java.util.Locale
@@ -48,7 +49,8 @@ class MyTrailsActivity : AppCompatActivity() {
             view.findViewById<Chip>(R.id.trail_row_route_chip).showRouteStatus(
                 if (trail.id in model.availableRouteIds) RouteChipState.SAVED else RouteChipState.MISSING)
             view.findViewById<Chip>(R.id.trail_row_aerial_chip).showAerialStatus(
-                AerialChipState.fromImagery(imageryState(downloads, trail.id)))
+                AerialChipState.fromImagery(imageryState(downloads, trail.id, MapMode.selected(this))),
+                MapMode.selected(this))
         }, open = { trail ->
             if (!model.busy) detail.launch(Intent(this, TrailDetailActivity::class.java)
                 .putExtra(TrailDetailActivity.EXTRA_LOCAL_ID, trail.id))

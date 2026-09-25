@@ -16,6 +16,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.ViewModelProvider
 import com.trailrelay.app.R
+import com.trailrelay.app.map.MapMode
 import com.trailrelay.app.MainActivity
 import com.trailrelay.app.offline.OfflineDownloads
 import com.trailrelay.app.trails.TrailDetailActivity
@@ -69,7 +70,8 @@ class CommunityActivity : AppCompatActivity() {
                     else -> RouteChipState.NOT_SAVED
                 })
                 findViewById<Chip>(R.id.trail_row_aerial_chip).showAerialStatus(
-                    AerialChipState.fromImagery(imageryState(downloads, communityTrailId(entry.id))))
+                    AerialChipState.fromImagery(imageryState(downloads, communityTrailId(entry.id), MapMode.selected(this@CommunityActivity))),
+                        MapMode.selected(this@CommunityActivity))
                 findViewById<Button>(R.id.trail_row_preview).apply {
                     visibility = View.VISIBLE
                     setOnClickListener {

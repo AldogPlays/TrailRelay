@@ -5,6 +5,8 @@ import android.content.Intent
 import android.content.ActivityNotFoundException
 import android.content.pm.ApplicationInfo
 import android.net.Uri
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -15,6 +17,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -28,11 +31,13 @@ import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.radiobutton.MaterialRadioButton
 import com.trailrelay.app.location.ForegroundLocation
 import com.trailrelay.app.location.SpeedEstimator
 import com.trailrelay.app.location.SpeedFix
-import com.trailrelay.app.map.AerialMap
+import com.trailrelay.app.map.TrailMap
 import com.trailrelay.app.map.MapOrientation
+import com.trailrelay.app.map.MapMode
 import com.trailrelay.app.map.MapSelection
 import com.trailrelay.app.map.MapSelectionState
 import com.trailrelay.app.map.MapTapDecision
@@ -73,7 +78,7 @@ import org.maplibre.android.maps.MapView
 class MainActivity : AppCompatActivity() {
     private enum class RouteOperation { NONE, OPENING, PREVIEW, DOWNLOAD }
     private lateinit var mapView: MapView
-    private lateinit var aerialMap: AerialMap
+    private lateinit var trailMap: TrailMap
     private lateinit var location: ForegroundLocation
     private lateinit var status: TextView
     private lateinit var mapShell: MapShell
@@ -99,6 +104,7 @@ class MainActivity : AppCompatActivity() {
     private var mapStatus: Int? = null
     private var permissionRequested = false
     private var orientation = MapOrientation.NORTH_UP
+    private var mapMode = MapMode.AERIAL
     private val speedEstimator = SpeedEstimator()
     private val speedDiagnosticsEnabled by lazy {
         (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
@@ -160,15 +166,20 @@ class MainActivity : AppCompatActivity() {
         mapView.onCreate(savedInstanceState)
         orientation = MapOrientation.fromPreference(getSharedPreferences(SettingsActivity.PREFERENCES, MODE_PRIVATE)
             .getString(ORIENTATION_PREFERENCE, null))
-        aerialMap = AerialMap(this, mapView, savedInstanceState) {
+        mapMode = MapMode.selected(this)
+        trailMap = TrailMap(this, mapView, savedInstanceState) {
             mapStatus = it
             renderStatus()
         }
-        aerialMap.setOrientation(orientation)
+        trailMap.setOrientation(orientation)
+        trailMap.loadStyle(mapMode)
         renderOrientation()
-        aerialMap.onTrailTap = ::chooseMapHit
+        findViewById<ImageButton>(R.id.map_layers).setOnClickListener { showMapChooser() }
+        renderModeControl()
+        trailMap.onTrailTap = ::chooseMapHit
+        trailMap.onPan = ::renderOrientation
         location = ForegroundLocation(this, { fix ->
-            aerialMap.showLocation(fix)
+            trailMap.showLocation(fix)
             val nowNanos = SystemClock.elapsedRealtimeNanos()
             val reading = speedEstimator.accept(SpeedFix(fix.latitude, fix.longitude,
                 fix.accuracy, fix.elapsedRealtimeNanos, fix.speed.takeIf { fix.hasSpeed() }), nowNanos)
@@ -188,12 +199,11 @@ class MainActivity : AppCompatActivity() {
             renderStatus()
         }
         findViewById<ImageButton>(R.id.orientation).setOnClickListener {
-            orientation = if (orientation == MapOrientation.NORTH_UP) MapOrientation.HEADING_UP
-                else MapOrientation.NORTH_UP
+            orientation = trailMap.nextOrientationPress()
             getSharedPreferences(SettingsActivity.PREFERENCES, MODE_PRIVATE).edit {
                 putString(ORIENTATION_PREFERENCE, orientation.name)
             }
-            val resumedFollow = aerialMap.setOrientation(orientation, userInitiated = true)
+            val resumedFollow = trailMap.setOrientation(orientation, userInitiated = true)
             if (resumedFollow) {
                 if (!location.hasPermission()) requestLocation() else {
                     location.stop()
@@ -202,10 +212,11 @@ class MainActivity : AppCompatActivity() {
             }
             renderOrientation()
         }
-        status.setOnClickListener { if (mapStatus != null) aerialMap.loadStyle() }
+        status.setOnClickListener { if (mapStatus != null) trailMap.loadStyle() }
         findViewById<ImageButton>(R.id.recenter).setOnClickListener {
             if (!location.hasPermission()) requestLocation() else {
-                val hasFix = aerialMap.recenter()
+                val hasFix = trailMap.recenter()
+                renderOrientation()
                 location.stop()
                 refreshLocation()
                 if (!hasFix) Log.i("TrailRelay", "Recenter waiting for a fresh location")
@@ -231,13 +242,13 @@ class MainActivity : AppCompatActivity() {
             when (selection.selection) {
                 is MapSelection.Preview -> if (selectedTrack == null) loadPreview() else downloadPreview()
                 is MapSelection.Saved -> selectedTrail?.let { trail ->
-                    val item = offline.packageFor(trail.id)
-                    when (offlineOperationState(offline.isCreating(trail.id), item?.deleting == true,
+                    val item = offline.packageFor(trail.id, mapMode)
+                    when (offlineOperationState(offline.isCreating(trail.id, mapMode), item?.deleting == true,
                         item?.libraryState)) {
-                        OfflineOperationState.NONE -> offline.start(trail)
+                        OfflineOperationState.NONE -> offline.start(trail, mapMode)
                         OfflineOperationState.DOWNLOADING -> item?.let(offline::pause)
                         OfflineOperationState.PAUSED, OfflineOperationState.FAILED ->
-                            if (item == null) offline.start(trail) else offline.resume(item)
+                            if (item == null) offline.start(trail, mapMode) else offline.resume(item)
                         OfflineOperationState.COMPLETE -> destination.launch(Intent(this, OfflineActivity::class.java)
                             .putExtra(MyTrailsActivity.EXTRA_TRAIL_ID, trail.id))
                         else -> Unit
@@ -262,6 +273,59 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun showMapChooser() {
+        val padding = resources.getDimensionPixelSize(R.dimen.space_content)
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(padding, 0, padding, padding)
+        }
+        val choices = RadioGroup(this)
+        content.addView(choices)
+        val credit = TextView(this).apply {
+            setText(R.string.map_credit_line)
+            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+            minHeight = resources.getDimensionPixelSize(R.dimen.touch_target)
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(resources.getDimensionPixelSize(R.dimen.space_related), 0, 0, 0)
+            contentDescription = getString(R.string.map_attribution_description)
+            setOnClickListener {
+                MaterialAlertDialogBuilder(this@MainActivity).setTitle(R.string.map_attribution_short)
+                    .setMessage(getString(R.string.map_attribution_details, getString(mapMode.credit)))
+                    .setPositiveButton(android.R.string.ok, null).show()
+            }
+        }
+        content.addView(credit)
+        val dialog = MaterialAlertDialogBuilder(this).setTitle(R.string.map_title).setView(content)
+            .setNegativeButton(android.R.string.cancel, null).create()
+        MapMode.entries.forEach { mode ->
+            choices.addView(MaterialRadioButton(this).apply {
+                setText(mode.label)
+                isChecked = mode == mapMode
+                minHeight = resources.getDimensionPixelSize(R.dimen.touch_target)
+                setOnClickListener {
+                    dialog.dismiss()
+                    if (mode != mapMode) {
+                        mapMode = mode
+                        getSharedPreferences(SettingsActivity.PREFERENCES, MODE_PRIVATE).edit {
+                            putString(MapMode.PREFERENCE, mode.id)
+                        }
+                        trailMap.loadStyle(mode)
+                        renderModeControl()
+                        renderCard()
+                        renderStatus()
+                    }
+                }
+            })
+        }
+        dialog.show()
+    }
+
+    private fun renderModeControl() {
+        findViewById<ImageButton>(R.id.map_layers).apply {
+            contentDescription = getString(R.string.map_selector_current, getString(mapMode.label))
+        }
+    }
+
     private fun refreshBrowse() {
         val request = ++browseRequest
         worker.execute {
@@ -278,7 +342,7 @@ class MainActivity : AppCompatActivity() {
                     browseTracks = routes.associate { it.first.id to it.second }
                     browseInfo = routes.associate { it.first.id to it.first }
                     catalogInfo = entries.associateBy(CatalogEntry::id)
-                    aerialMap.showBrowseTrails(browseTracks)
+                    trailMap.showBrowseTrails(browseTracks)
                     val current = selection.selection
                     if (current is MapSelection.Preview) {
                         routes.firstOrNull { it.first.id == communityTrailId(current.catalogId) }?.let { (trail, track) ->
@@ -286,7 +350,7 @@ class MainActivity : AppCompatActivity() {
                             selectedTrail = trail
                             selectedTrack = track
                             previewMessage = null
-                            aerialMap.showTrail(trail, track, false)
+                            trailMap.showTrail(trail, track, false)
                             renderCard()
                         }
                     }
@@ -336,7 +400,7 @@ class MainActivity : AppCompatActivity() {
         previewMessage = null
         busy = true
         routeOperation = RouteOperation.OPENING
-        aerialMap.beginSelection()
+        trailMap.beginSelection()
         renderCard()
         val request = ++trailRequest
         worker.execute {
@@ -358,7 +422,7 @@ class MainActivity : AppCompatActivity() {
                         selectedTrail = trail
                         selectedEntry = entry
                         selectedTrack = track
-                        aerialMap.showTrail(trail, track, fit)
+                        trailMap.showTrail(trail, track, fit)
                         renderCard()
                     }.onFailure {
                         clearSelection()
@@ -377,7 +441,7 @@ class MainActivity : AppCompatActivity() {
         selectedEntry = null
         previewMessage = null
         downloadFailed = false
-        aerialMap.beginSelection()
+        trailMap.beginSelection()
         renderCard()
         loadPreview(fit)
     }
@@ -427,7 +491,7 @@ class MainActivity : AppCompatActivity() {
                         selectedTrail = trail
                         selectedTrack = track
                         if (saved) selection.saved(trail.id)
-                        aerialMap.showTrail(trail, track, fit)
+                        trailMap.showTrail(trail, track, fit)
                         renderCard()
                     }.onFailure {
                         previewMessage = getString(R.string.preview_failed, it.message ?: getString(R.string.check_connection))
@@ -459,7 +523,7 @@ class MainActivity : AppCompatActivity() {
                         selection.saved(trail.id)
                         selectedTrail = trail
                         selectedTrack = savedTrack
-                        aerialMap.showTrail(trail, savedTrack, false)
+                        trailMap.showTrail(trail, savedTrack, false)
                         refreshBrowse()
                         renderCard()
                         Snackbar.make(findViewById(R.id.main), R.string.route_saved_snackbar,
@@ -484,12 +548,13 @@ class MainActivity : AppCompatActivity() {
         busy = false
         routeOperation = RouteOperation.NONE
         downloadFailed = false
-        aerialMap.clearTrail()
-        aerialMap.showBrowseTrails(browseTracks)
+        trailMap.clearTrail()
+        trailMap.showBrowseTrails(browseTracks)
         renderCard()
     }
 
     private fun renderCard() {
+        renderOrientation()
         val current = selection.selection
         selectionBack.isEnabled = current != null
         mapShell.setSelectionVisible(current != null)
@@ -497,16 +562,16 @@ class MainActivity : AppCompatActivity() {
         val preview = current is MapSelection.Preview
         val trail = selectedTrail
         val entry = selectedEntry
-        val offlineItem = trail?.takeUnless { preview }?.let { offline.packageFor(it.id) }
-        val offlineState = offlineOperationState(trail?.let { !preview && offline.isCreating(it.id) } == true,
+        val offlineItem = trail?.takeUnless { preview }?.let { offline.packageFor(it.id, mapMode) }
+        val offlineState = offlineOperationState(trail?.let { !preview && offline.isCreating(it.id, mapMode) } == true,
             offlineItem?.deleting == true, offlineItem?.libraryState ?: when {
-                trail != null && !preview && (offline.loadError != null || offline.errorFor(trail.id) != null) ->
+                trail != null && !preview && (offline.loadError != null || offline.errorFor(trail.id, mapMode) != null) ->
                     OfflineLibraryState.FAILED
                 trail != null && !preview && !offline.loaded -> OfflineLibraryState.CHECKING
                 else -> null
             })
-        aerialMap.setOfflineTrail(trail?.id?.takeIf {
-            !preview && offline.loadError == null && offline.packageFor(it)?.complete == true
+        trailMap.setOfflineTrail(trail?.id?.takeIf {
+            !preview && offline.loadError == null && offline.packageFor(it, mapMode)?.complete == true
         })
         findViewById<TextView>(R.id.selection_name).text = entry?.name ?: trail?.name
             ?: getString(if (preview) R.string.community_preview else R.string.loading_trail)
@@ -549,7 +614,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<Chip>(R.id.selection_aerial_chip).showAerialStatus(
             if (preview) AerialChipState.NOT_OFFLINE else if (offlineItem?.deleting == true)
                 AerialChipState.DELETING else AerialChipState.fromImagery(
-                trail?.let { imageryState(offline, it.id) } ?: com.trailrelay.app.trails.ImageryState.CHECKING))
+                trail?.let { imageryState(offline, it.id, mapMode) } ?: com.trailrelay.app.trails.ImageryState.CHECKING), mapMode)
         findViewById<TextView>(R.id.selection_message).apply {
             text = when (routeOperation) {
                 RouteOperation.OPENING -> getString(R.string.loading_trail)
@@ -571,9 +636,10 @@ class MainActivity : AppCompatActivity() {
                 offlineState == OfflineOperationState.PAUSED) offlineProgressMetrics(this@MainActivity,
                 offlineItem?.status) else ""
             val error = if (offlineState == OfflineOperationState.FAILED) offlineItem?.error
-                ?: trail?.id?.let(offline::errorFor) ?: offline.loadError else null
-            text = if (preview || trail == null || offlineState == OfflineOperationState.NONE) "" else
-                getString(offlineState.label()) + metrics.takeIf(String::isNotBlank)?.let { "\n$it" }.orEmpty() +
+                ?: trail?.id?.let { offline.errorFor(it, mapMode) } ?: offline.loadError else null
+            text = if (preview || trail == null) "" else
+                getString(mapMode.label) + " · " + getString(offlineState.label()) +
+                    metrics.takeIf(String::isNotBlank)?.let { "\n$it" }.orEmpty() +
                     error?.let { "\n$it" }.orEmpty()
             visibility = if (text.isBlank()) View.GONE else View.VISIBLE
         }
@@ -597,6 +663,7 @@ class MainActivity : AppCompatActivity() {
                 offlineState != OfflineOperationState.DELETING && offlineState != OfflineOperationState.CHECKING
         }
         mapShell.refreshContentHeight()
+        renderStatus()
     }
 
     private fun requestLocation() {
@@ -607,7 +674,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshLocation() {
         val allowed = location.hasPermission()
-        aerialMap.setLocationAllowed(allowed)
+        trailMap.setLocationAllowed(allowed)
         if (!allowed) {
             location.stop()
             clearSpeed()
@@ -618,17 +685,24 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderStatus() {
         val messages = listOfNotNull(mapStatus, locationStatus).distinct()
-        status.text = messages.joinToString("\n") { getString(it) }
-        status.visibility = if (messages.isEmpty()) View.GONE else View.VISIBLE
+        val network = getSystemService(ConnectivityManager::class.java)
+        val hasInternet = network.getNetworkCapabilities(network.activeNetwork)
+            ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        val coverageWarning = selectedTrail?.takeIf { !hasInternet &&
+            offline.loaded && offline.packageFor(it.id, mapMode)?.complete != true }
+            ?.let { getString(R.string.map_coverage_unavailable, getString(mapMode.label)) }
+        status.text = (messages.map(::getString) + listOfNotNull(coverageWarning)).joinToString("\n")
+        status.visibility = if (status.text.isBlank()) View.GONE else View.VISIBLE
     }
 
     private fun renderOrientation() {
         findViewById<ImageButton>(R.id.orientation).apply {
-            setImageResource(if (orientation == MapOrientation.NORTH_UP) R.drawable.ic_north_up
+            setImageResource(if (trailMap.northResetPending || orientation == MapOrientation.NORTH_UP) R.drawable.ic_north_up
                 else R.drawable.ic_heading_up)
-            contentDescription = getString(if (orientation == MapOrientation.NORTH_UP)
+            contentDescription = getString(if (trailMap.northResetPending) R.string.orientation_reset_north
+                else if (orientation == MapOrientation.NORTH_UP)
                 R.string.orientation_north_up else R.string.orientation_heading_up)
-            isActivated = orientation == MapOrientation.HEADING_UP
+            isActivated = orientation == MapOrientation.HEADING_UP && !trailMap.northResetPending
         }
     }
 
@@ -690,14 +764,14 @@ class MainActivity : AppCompatActivity() {
             window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         resumed = true
-        aerialMap.resumeCompass()
+        trailMap.resumeCompass()
         refreshLocation()
         speedHandler.removeCallbacks(speedRefresh)
         speedHandler.post(speedRefresh)
     }
     override fun onPause() {
         resumed = false
-        aerialMap.pauseCompass()
+        trailMap.pauseCompass()
         speedHandler.removeCallbacks(speedRefresh)
         clearSpeed()
         window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -713,7 +787,7 @@ class MainActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         mapView.onSaveInstanceState(outState)
-        aerialMap.saveState(outState)
+        trailMap.saveState(outState)
         (selection.selection as? MapSelection.Saved)?.let { outState.putString("selectedTrailId", it.trailId) }
         (selection.selection as? MapSelection.Preview)?.let { outState.putString("previewCatalogId", it.catalogId) }
         outState.putBoolean("permissionRequested", permissionRequested)
@@ -722,7 +796,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         worker.shutdown()
         location.stop()
-        aerialMap.destroy()
+        trailMap.destroy()
         mapView.onDestroy()
         super.onDestroy()
     }

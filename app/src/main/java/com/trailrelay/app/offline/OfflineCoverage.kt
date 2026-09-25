@@ -11,18 +11,19 @@ object OfflineCoverage {
     const val TILE_LIMIT = 5_500L
     private const val MERCATOR_LIMIT = 85.0511287798066
 
-    fun padded(bounds: CoverageBounds): CoverageBounds {
+    fun padded(bounds: CoverageBounds, meters: Double = 1_500.0): CoverageBounds {
+        require(meters.isFinite() && meters > 0)
         require(listOf(bounds.south, bounds.west, bounds.north, bounds.east).all { it.isFinite() } &&
             bounds.south >= -MERCATOR_LIMIT && bounds.north <= MERCATOR_LIMIT &&
             bounds.south <= bounds.north && bounds.west >= -180 && bounds.east <= 180 &&
             bounds.west <= bounds.east) { "This trail has invalid map bounds." }
-        val latitudePadding = Math.toDegrees(1_500.0 / 6_371_008.8)
+        val latitudePadding = Math.toDegrees(meters / 6_371_008.8)
         val south = bounds.south - latitudePadding
         val north = bounds.north + latitudePadding
         require(south >= -MERCATOR_LIMIT && north <= MERCATOR_LIMIT) {
-            "This trail is outside the supported aerial map area."
+            "This trail is outside the supported map area."
         }
-        // Use the most poleward edge so the east/west padding is at least 1.5 km.
+        // Use the most poleward edge so east/west padding is at least the requested distance.
         val longitudePadding = latitudePadding / cos(Math.toRadians(max(abs(south), abs(north))))
         require(bounds.west - longitudePadding >= -180 && bounds.east + longitudePadding <= 180) {
             "Trails crossing the date line are not supported for offline maps yet."
