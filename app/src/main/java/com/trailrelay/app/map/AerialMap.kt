@@ -246,15 +246,18 @@ class AerialMap(
         updateLocationComponent()
     }
 
-    fun setOrientation(orientation: MapOrientation) {
-        follow.orientation = orientation
+    /** Returns true when a user selected Heading Up from a panned view. */
+    fun setOrientation(orientation: MapOrientation, userInitiated: Boolean = false): Boolean {
+        if (follow.selectOrientation(orientation, userInitiated)) {
+            recenter()
+            return true
+        }
         if (follow.following) {
             applyCameraMode()
-        } else {
-            val bearing = orientation.bearingWhilePanned(lastHeading,
-                SystemClock.elapsedRealtime() - headingTimeMillis) ?: return
-            map?.moveCamera(CameraUpdateFactory.bearingTo(bearing))
+        } else if (orientation == MapOrientation.NORTH_UP) {
+            map?.moveCamera(CameraUpdateFactory.bearingTo(0.0))
         }
+        return false
     }
 
     fun resumeCompass() {

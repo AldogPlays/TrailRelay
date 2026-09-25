@@ -7,17 +7,20 @@ enum class MapOrientation {
         fun fromPreference(value: String?): MapOrientation =
             entries.firstOrNull { it.name == value } ?: NORTH_UP
     }
-
-    /** One-time bearing for map inspection; never changes the camera target or follow state. */
-    fun bearingWhilePanned(heading: Float?, headingAgeMillis: Long): Double? = when (this) {
-        NORTH_UP -> 0.0
-        HEADING_UP -> heading?.takeIf { it.isFinite() && headingAgeMillis in 0..5_000L }
-            ?.let { ((it % 360f + 360f) % 360f).toDouble() }
-    }
 }
 
 /** Orientation remains selected when a map gesture suspends following. */
 class FollowState(var orientation: MapOrientation, var following: Boolean = true) {
     fun pan() { following = false }
     fun recenter() { following = true }
+
+    /** Only a user selection of Heading Up resumes suspended follow. */
+    fun selectOrientation(next: MapOrientation, userInitiated: Boolean): Boolean {
+        orientation = next
+        if (userInitiated && next == MapOrientation.HEADING_UP && !following) {
+            following = true
+            return true
+        }
+        return false
+    }
 }

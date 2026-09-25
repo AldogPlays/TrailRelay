@@ -44,7 +44,8 @@ class CommunityModel(application: Application) : AndroidViewModel(application) {
     fun refreshSaved() {
         worker.execute {
             runCatching { TrailStore(getApplication()).use { store ->
-                store.list().filter(store::hasLocalGpx).mapNotNull { it.remoteId }.toSet()
+                store.list().filter { it.remoteId != null && store.loadUsableGpx(it) != null }
+                    .mapNotNull { it.remoteId }.toSet()
             } }.onSuccess { ids -> post {
                 savedRemoteIds = ids
                 savedLoaded = true

@@ -26,11 +26,37 @@ class MapOrientationTest {
         assertEquals(MapOrientation.NORTH_UP, state.orientation)
     }
 
-    @Test fun pannedOrientationUsesOnlyAvailableHeading() {
-        assertEquals(0.0, MapOrientation.NORTH_UP.bearingWhilePanned(null, Long.MAX_VALUE)!!, 0.0)
-        assertEquals(270.0, MapOrientation.HEADING_UP.bearingWhilePanned(-90f, 100L)!!, 0.0)
-        assertNull(MapOrientation.HEADING_UP.bearingWhilePanned(null, 0L))
-        assertNull(MapOrientation.HEADING_UP.bearingWhilePanned(Float.NaN, 0L))
-        assertNull(MapOrientation.HEADING_UP.bearingWhilePanned(45f, 5_001L))
+    @Test fun northUpSelectionKeepsPannedFollowSuspended() {
+        val state = FollowState(MapOrientation.HEADING_UP)
+        state.pan()
+        assertFalse(state.selectOrientation(MapOrientation.NORTH_UP, userInitiated = true))
+        assertEquals(MapOrientation.NORTH_UP, state.orientation)
+        assertFalse(state.following)
+    }
+
+    @Test fun headingUpSelectionResumesPannedFollow() {
+        val state = FollowState(MapOrientation.NORTH_UP)
+        state.pan()
+        assertTrue(state.selectOrientation(MapOrientation.HEADING_UP, userInitiated = true))
+        assertEquals(MapOrientation.HEADING_UP, state.orientation)
+        assertTrue(state.following)
+    }
+
+    @Test fun restoringHeadingPreferenceDoesNotResumePannedFollow() {
+        val state = FollowState(MapOrientation.NORTH_UP)
+        state.pan()
+        assertFalse(state.selectOrientation(MapOrientation.HEADING_UP, userInitiated = false))
+        assertEquals(MapOrientation.HEADING_UP, state.orientation)
+        assertFalse(state.following)
+    }
+
+    @Test fun recenterKeepsTheSelectedOrientation() {
+        for (orientation in MapOrientation.entries) {
+            val state = FollowState(orientation)
+            state.pan()
+            state.recenter()
+            assertTrue(state.following)
+            assertEquals(orientation, state.orientation)
+        }
     }
 }

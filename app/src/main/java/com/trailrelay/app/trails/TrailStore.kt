@@ -57,20 +57,26 @@ class TrailStore(private val context: Context) : SQLiteOpenHelper(context, "trai
 
     fun hasLocalGpx(trail: Trail): Boolean = File(context.filesDir, trail.gpxLocalPath).isFile
 
+    /** Validate only when a caller must decide whether local bytes can be used or repaired. */
+    fun loadUsableGpx(trail: Trail): GpxTrack? = readUsableGpx(File(context.filesDir, trail.gpxLocalPath))
+
     fun localGpxSize(trail: Trail): Long? = File(context.filesDir, trail.gpxLocalPath)
         .takeIf(File::isFile)?.length()
 
-    /** Removes this local route record and file only; associated MapLibre imagery is independent. */
-    fun removeLocalRoute(trail: Trail): Boolean {
+    /** Removes the index first; a failed file deletion can then be retried with the same trail. */
+    fun removeLocalRoute(trail: Trail): RouteRemovalResult {
         val db = writableDatabase
         db.beginTransaction()
         try {
-            if (db.delete("trails", "id = ?", arrayOf(trail.id)) != 1) return false
+            if (db.delete("trails", "id = ? AND gpx_local_path = ?",
+                    arrayOf(trail.id, trail.gpxLocalPath)) != 1) return RouteRemovalResult.FAILED
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
-        File(context.filesDir, trail.gpxLocalPath).delete()
-        return true
+        return routeRemovalResult(true, removeStoredRouteFile(File(context.filesDir, trail.gpxLocalPath)))
     }
+
+    fun retryRouteFileCleanup(trail: Trail): Boolean =
+        get(trail.id) == null && removeStoredRouteFile(File(context.filesDir, trail.gpxLocalPath))
 
     fun import(uri: Uri): Trail {
         val directory = File(context.filesDir, "trails")
@@ -158,7 +164,7 @@ class TrailStore(private val context: Context) : SQLiteOpenHelper(context, "trai
     /** Community identity is stable across preview and detail entry points. */
     fun downloadIfMissing(entry: CatalogEntry): Trail {
         val existing = get(communityTrailId(entry.id))
-        return resolveCommunityDownload(existing, ::hasLocalGpx) { download(entry) }
+        return resolveCommunityDownload(existing, { loadUsableGpx(it) != null }) { download(entry) }
     }
 
     private fun Trail.values() = ContentValues().apply {
@@ -188,3 +194,16 @@ class TrailStore(private val context: Context) : SQLiteOpenHelper(context, "trai
         getString(getColumnIndexOrThrow("remote_id")),
     )
 }
+
+enum class RouteRemovalResult { COMPLETE, FILE_CLEANUP_FAILED, FAILED }
+
+internal fun routeRemovalResult(metadataRemoved: Boolean, fileRemoved: Boolean): RouteRemovalResult = when {
+    !metadataRemoved -> RouteRemovalResult.FAILED
+    !fileRemoved -> RouteRemovalResult.FILE_CLEANUP_FAILED
+    else -> RouteRemovalResult.COMPLETE
+}
+
+internal fun readUsableGpx(file: File): GpxTrack? = if (!file.isFile) null else
+    try { file.inputStream().use(GpxParser::parse) } catch (_: Exception) { null }
+
+internal fun removeStoredRouteFile(file: File): Boolean = !file.exists() || file.delete()

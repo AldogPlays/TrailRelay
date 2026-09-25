@@ -19,11 +19,13 @@ import com.trailrelay.app.trails.MyTrailsActivity
 import com.trailrelay.app.trails.RouteChipState
 import com.trailrelay.app.trails.Trail
 import com.trailrelay.app.trails.TrailStore
+import com.trailrelay.app.trails.RouteRemovalResult
 import com.trailrelay.app.trails.fromLibrary
 import com.trailrelay.app.trails.showAerialStatus
 import com.trailrelay.app.trails.showRouteStatus
 import org.maplibre.android.MapLibre
 import java.util.concurrent.Executors
+import android.widget.Toast
 
 class OfflineActivity : AppCompatActivity() {
     private lateinit var downloads: OfflineDownloads
@@ -114,7 +116,7 @@ class OfflineActivity : AppCompatActivity() {
         val aerialBytes = items.sumOf { it.status?.completedResourceSize?.coerceAtLeast(0L) ?: 0L }
         val parts = listOfNotNull(
             routeBytes.takeIf { it > 0 }?.let { "Routes: ${Formatter.formatFileSize(this, it)}" },
-            aerialBytes.takeIf { it > 0 }?.let { "Aerial maps: ${Formatter.formatFileSize(this, it)}" })
+            aerialBytes.takeIf { it > 0 }?.let { "Downloaded aerial data: ${Formatter.formatFileSize(this, it)}" })
         findViewById<TextView>(R.id.offline_summary).text = if (parts.isEmpty())
             getString(R.string.offline_library_intro) else parts.joinToString(" · ")
     }
@@ -126,8 +128,34 @@ class OfflineActivity : AppCompatActivity() {
         MaterialAlertDialogBuilder(this).setTitle(R.string.remove_route).setMessage(message)
             .setNegativeButton(android.R.string.cancel, null).setPositiveButton(R.string.remove_route) { _, _ ->
                 worker.execute {
-                    runCatching { TrailStore(applicationContext).use { it.removeLocalRoute(trail) } }
-                    runOnUiThread { if (!isDestroyed) loadTrails() }
+                    val result = runCatching { TrailStore(applicationContext).use { it.removeLocalRoute(trail) } }
+                        .getOrDefault(RouteRemovalResult.FAILED)
+                    runOnUiThread { if (!isDestroyed) {
+                        loadTrails()
+                        when (result) {
+                            RouteRemovalResult.COMPLETE -> Unit
+                            RouteRemovalResult.FILE_CLEANUP_FAILED -> showRouteCleanupFailure(trail)
+                            RouteRemovalResult.FAILED -> Toast.makeText(this,
+                                R.string.route_removal_failed, Toast.LENGTH_LONG).show()
+                        }
+                    } }
+                }
+            }.show()
+    }
+
+    private fun showRouteCleanupFailure(trail: Trail) {
+        MaterialAlertDialogBuilder(this).setTitle(R.string.route_cleanup_failed_title)
+            .setMessage(R.string.route_cleanup_failed_message)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.retry_cleanup) { _, _ ->
+                worker.execute {
+                    val cleaned = runCatching { TrailStore(applicationContext).use {
+                        it.retryRouteFileCleanup(trail)
+                    } }.getOrDefault(false)
+                    runOnUiThread { if (!isDestroyed) {
+                        Toast.makeText(this, if (cleaned) R.string.route_cleanup_complete
+                            else R.string.route_cleanup_still_failed, Toast.LENGTH_LONG).show()
+                    } }
                 }
             }.show()
     }

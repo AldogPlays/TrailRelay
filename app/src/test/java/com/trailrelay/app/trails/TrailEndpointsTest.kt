@@ -8,7 +8,7 @@ class TrailEndpointsTest {
         val bad = TrackPoint(Double.NaN, 0.0)
         val start = TrackPoint(40.0, -105.0)
         val end = TrackPoint(41.0, -106.0)
-        val track = GpxTrack(null, null, listOf(listOf(bad, start), emptyList(),
+        val track = GpxTrack(null, null, listOf(listOf(bad, start, TrackPoint(40.1, -105.1)), emptyList(),
             listOf(TrackPoint(40.5, -105.5), end, TrackPoint(91.0, 0.0))))
         assertEquals(TrailEndpoints(start, end), track.endpoints())
     }
@@ -26,5 +26,22 @@ class TrailEndpointsTest {
         val end = TrackPoint(40.00014, -105.0)
         assertEquals(TrailEndpoints(start, end),
             GpxTrack(null, null, listOf(listOf(start, end))).endpoints())
+    }
+
+    @Test fun isolatedPointsBeforeAndAfterLinesAreNotDestinations() {
+        val start = TrackPoint(40.0, -105.0)
+        val end = TrackPoint(41.0, -106.0)
+        val track = GpxTrack(null, null, listOf(
+            listOf(TrackPoint(39.0, -104.0)),
+            listOf(start, TrackPoint(40.1, -105.1)),
+            listOf(TrackPoint(40.5, -105.5), end),
+            listOf(TrackPoint(42.0, -107.0))))
+        assertEquals(TrailEndpoints(start, end), track.endpoints())
+    }
+
+    @Test fun onlyIsolatedPointsHaveNoNavigationEndpoints() {
+        assertNull(GpxTrack(null, null, listOf(
+            listOf(TrackPoint(40.0, -105.0)), emptyList(),
+            listOf(TrackPoint(41.0, -106.0)))).endpoints())
     }
 }

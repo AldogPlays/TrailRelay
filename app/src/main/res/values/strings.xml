@@ -136,6 +136,12 @@
     <string name="keep_screen_awake">Keep screen awake</string>
     <string name="keep_screen_awake_summary">Prevent the display from sleeping while TrailRelay is in use.</string>
     <string name="remove_route">Remove Route</string>
+    <string name="route_removal_failed">Could not remove the route. Try again.</string>
+    <string name="route_cleanup_failed_title">Route file remains</string>
+    <string name="route_cleanup_failed_message">The route was removed from the library, but its GPX file could not be deleted. Try cleaning up the file now.</string>
+    <string name="retry_cleanup">Retry cleanup</string>
+    <string name="route_cleanup_complete">Route file removed.</string>
+    <string name="route_cleanup_still_failed">Route file could not be removed.</string>
     <string name="route_size">Route · Saved · %1$s</string>
     <string name="route_saved_local">Route · Saved</string>
     <string name="route_removed_aerial_only">Route is no longer saved. The aerial package remains available below.</string>

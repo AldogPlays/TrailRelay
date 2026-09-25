@@ -135,7 +135,7 @@ class CommunityActivity : AppCompatActivity() {
         super.onStart()
         downloads.listeners.add(offlineListener)
         downloads.refresh()
-        model.refreshSaved()
+        if (model.savedLoaded) model.refreshSaved()
         renderList()
     }
 

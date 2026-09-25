@@ -31,7 +31,6 @@ import java.util.Locale
 class TrailDetailActivity : AppCompatActivity() {
     private lateinit var model: TrailDetailModel
     private lateinit var downloads: OfflineDownloads
-    private lateinit var trailStore: TrailStore
     private var wasDownloadingRoute = false
     private val offlineListener: () -> Unit = { render() }
 
@@ -40,11 +39,10 @@ class TrailDetailActivity : AppCompatActivity() {
         MapLibre.getInstance(this)
         ContentShell.install(this, R.string.trail_details, R.layout.activity_trail_detail, R.id.detail_root)
         downloads = OfflineDownloads.get(this)
-        trailStore = TrailStore(applicationContext)
         model = ViewModelProvider(this)[TrailDetailModel::class.java]
         model.initialize(intent.getStringExtra(EXTRA_LOCAL_ID), intent.getStringExtra(EXTRA_CATALOG_ID))
         findViewById<Button>(R.id.detail_primary).setOnClickListener {
-            model.trail?.let {
+            model.trail?.takeIf { model.localUsable }?.let {
                 setResult(RESULT_OK, Intent().putExtra(MyTrailsActivity.EXTRA_TRAIL_ID, it.id))
                 finish()
             } ?: model.download()
@@ -86,6 +84,9 @@ class TrailDetailActivity : AppCompatActivity() {
     private fun render() {
         val trail = model.trail
         val entry = model.entry
+        val routeReady = trail != null && model.localUsable
+        val canDownload = entry != null && (trail == null ||
+            (trail.source == TrailSource.COMMUNITY && !model.localUsable))
         if (wasDownloadingRoute && !model.downloading && trail != null) {
             Snackbar.make(findViewById(R.id.detail_root), R.string.route_saved_snackbar, Snackbar.LENGTH_SHORT).show()
         }
@@ -108,7 +109,7 @@ class TrailDetailActivity : AppCompatActivity() {
             if (trail != null || entry != null) View.VISIBLE else View.GONE
         findViewById<Chip>(R.id.detail_route_chip).showRouteStatus(when {
             model.downloading || model.loading -> RouteChipState.CHECKING
-            trail != null && trailStore.hasLocalGpx(trail) -> RouteChipState.SAVED
+            routeReady -> RouteChipState.SAVED
             trail != null -> RouteChipState.MISSING
             entry != null -> RouteChipState.NOT_SAVED
             else -> RouteChipState.ERROR
@@ -147,15 +148,16 @@ class TrailDetailActivity : AppCompatActivity() {
                 !downloads.loaded -> OfflineLibraryState.CHECKING
                 else -> null
             })
-        val actions = trailDetailActions(trail != null, model.downloading, imagery)
+        val actions = trailDetailActions(routeReady, model.downloading, imagery)
         findViewById<Button>(R.id.detail_primary).apply {
             text = getString(when {
-                trail != null -> R.string.open_map
+                routeReady -> R.string.open_map
                 model.downloading -> R.string.downloading_route
+                trail != null -> R.string.retry_download
                 model.message?.startsWith("Download failed:") == true -> R.string.retry_download
                 else -> R.string.download_trail
             })
-            visibility = if (actions.openMap || actions.downloadTrail || model.downloading) View.VISIBLE else View.GONE
+            visibility = if (actions.openMap || canDownload || model.downloading) View.VISIBLE else View.GONE
             isEnabled = !model.downloading && !model.loading
         }
         findViewById<Button>(R.id.detail_preview).apply {
@@ -220,7 +222,6 @@ class TrailDetailActivity : AppCompatActivity() {
     }
     override fun onDestroy() {
         model.onChange = null
-        trailStore.close()
         super.onDestroy()
     }
 

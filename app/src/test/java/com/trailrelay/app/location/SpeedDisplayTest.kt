@@ -73,4 +73,25 @@ class SpeedDisplayTest {
         assertEquals(SpeedSource.UNAVAILABLE,
             estimator.accept(fix(1, latitude = 0.0002), 101 * second).source)
     }
+
+    @Test fun rejectedNativeSpeedDoesNotReplaceAcceptedReading() {
+        val estimator = SpeedEstimator()
+        val accepted = estimator.accept(fix(0, native = 0f), 100 * second)
+        assertEquals(SpeedReading(0, SpeedSource.NATIVE), accepted)
+        assertEquals(accepted, estimator.accept(fix(4, accuracy = 50f, native = 20f), 104 * second))
+        assertEquals(accepted, estimator.accept(fix(4, latitude = Double.NaN, native = 20f), 104 * second))
+        assertEquals(accepted, estimator.accept(fix(-1, native = 20f), 104 * second))
+        assertEquals(accepted, estimator.accept(fix(0, native = 20f), 104 * second))
+        assertEquals(SpeedReading(11, SpeedSource.NATIVE),
+            estimator.accept(fix(8, native = 5f), 108 * second))
+    }
+
+    @Test fun rejectedFixDoesNotBreakDerivedWindow() {
+        val estimator = SpeedEstimator()
+        estimator.accept(fix(0), 100 * second)
+        estimator.accept(fix(4, latitude = 0.0001), 104 * second)
+        estimator.accept(fix(5, latitude = 0.00015, accuracy = 50f, native = 25f), 105 * second)
+        assertEquals(SpeedReading(6, SpeedSource.DERIVED),
+            estimator.accept(fix(8, latitude = 0.0002), 108 * second))
+    }
 }

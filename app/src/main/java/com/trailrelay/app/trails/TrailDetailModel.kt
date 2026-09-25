@@ -17,6 +17,7 @@ class TrailDetailModel(application: Application) : AndroidViewModel(application)
     private var initialized = false
     var onChange: (() -> Unit)? = null
     var trail: Trail? = null; private set
+    var localUsable = false; private set
     var entry: CatalogEntry? = null; private set
     var loading = true; private set
     var downloading = false; private set
@@ -29,7 +30,6 @@ class TrailDetailModel(application: Application) : AndroidViewModel(application)
         initialized = true
         localId = id
         remoteId = catalogId
-        refresh()
     }
 
     fun refresh() {
@@ -42,16 +42,27 @@ class TrailDetailModel(application: Application) : AndroidViewModel(application)
                 }
                 val catalogEntry = catalog?.firstOrNull { it.id == remote }
                 val saved = TrailStore(getApplication()).use { store ->
-                    store.get(localId ?: remote?.let(::communityTrailId).orEmpty())
+                    store.get(localId ?: remote?.let(::communityTrailId).orEmpty()).let { trail ->
+                        trail to (trail?.let { store.loadUsableGpx(it) != null } == true)
+                    }
                 }
                 saved to catalogEntry
             }
             post {
                 loading = false
                 result.onSuccess { (saved, catalogEntry) ->
-                    trail = saved
+                    trail = saved.first
+                    localUsable = saved.second
                     entry = catalogEntry
-                    if (saved == null && catalogEntry == null) message = "This trail is no longer available. Return to the list and try again."
+                    message = when {
+                        trail == null && catalogEntry == null -> "This trail is no longer available. Return to the list and try again."
+                        trail != null && !localUsable && trail?.source == TrailSource.COMMUNITY && catalogEntry != null ->
+                            "Saved GPX is missing or invalid. Download a fresh copy to repair it."
+                        trail != null && !localUsable && trail?.source == TrailSource.COMMUNITY ->
+                            "Saved GPX is missing or invalid. Open Community to refresh its catalog and repair this route."
+                        trail != null && !localUsable -> "Saved GPX is missing or invalid. Reimport this route to repair it."
+                        else -> null
+                    }
                 }.onFailure { message = "Unable to load trail details. Try reopening this trail." }
             }
         }
@@ -59,7 +70,7 @@ class TrailDetailModel(application: Application) : AndroidViewModel(application)
 
     fun download() {
         val selected = entry ?: return
-        if (downloading || trail != null) return
+        if (downloading || (trail != null && (localUsable || trail?.source != TrailSource.COMMUNITY))) return
         downloading = true
         message = null
         onChange?.invoke()
@@ -71,7 +82,7 @@ class TrailDetailModel(application: Application) : AndroidViewModel(application)
             }
             post {
                 downloading = false
-                result.onSuccess { trail = it; message = "Saved in My Trails." }
+                result.onSuccess { trail = it; localUsable = true; message = "Saved in My Trails." }
                     .onFailure { message = "Download failed: ${it.message ?: "Check your connection and storage space."}" }
             }
         }

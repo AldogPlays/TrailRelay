@@ -193,7 +193,13 @@ class MainActivity : AppCompatActivity() {
             getSharedPreferences(SettingsActivity.PREFERENCES, MODE_PRIVATE).edit {
                 putString(ORIENTATION_PREFERENCE, orientation.name)
             }
-            aerialMap.setOrientation(orientation)
+            val resumedFollow = aerialMap.setOrientation(orientation, userInitiated = true)
+            if (resumedFollow) {
+                if (!location.hasPermission()) requestLocation() else {
+                    location.stop()
+                    refreshLocation()
+                }
+            }
             renderOrientation()
         }
         status.setOnClickListener { if (mapStatus != null) aerialMap.loadStyle() }
@@ -392,15 +398,15 @@ class MainActivity : AppCompatActivity() {
                 }
                 val (local, track) = TrailStore(applicationContext).use { store ->
                     val saved = store.get(communityTrailId(entry.id))
-                    val hasLocal = saved?.let(store::hasLocalGpx) == true
-                    val geometry = resolveMapGeometry(TrailSource.COMMUNITY, hasLocal,
-                        { store.load(checkNotNull(saved)) }, {
+                    val localTrack = saved?.let(store::loadUsableGpx)
+                    val geometry = resolveMapGeometry(TrailSource.COMMUNITY, localTrack != null,
+                        { checkNotNull(localTrack) }, {
                             val bytes = ByteArrayOutputStream().also {
                                 CommunityClient.download(entry.gpxUrl, it)
                             }.toByteArray()
                             bytes.inputStream().use(GpxParser::parse)
                         })
-                    (saved?.takeIf { hasLocal }?.let { it to geometry }) to geometry
+                    (saved?.takeIf { localTrack != null }?.let { it to geometry }) to geometry
                 }
                 val trail = local?.first ?: run {
                     val parsed = track

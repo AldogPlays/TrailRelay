@@ -41,15 +41,14 @@ class SpeedEstimator {
 
     fun accept(fix: SpeedFix, nowNanos: Long): SpeedReading {
         val previous = latest
-        latest = fix
         val age = ageMillis(fix, nowNanos)
         if (age !in 0..SpeedDisplay.MAX_AGE_MILLIS || !coordinatesValid(fix) ||
             !accuracyValid(fix) || previous?.elapsedRealtimeNanos?.let {
                 fix.elapsedRealtimeNanos <= it
             } == true) {
-            recent.clear()
             return reading(nowNanos)
         }
+        latest = fix
         recent.addLast(fix)
         while (recent.isNotEmpty() &&
             fix.elapsedRealtimeNanos - recent.first().elapsedRealtimeNanos > WINDOW_NANOS) {
