@@ -12,8 +12,8 @@ android {
         applicationId = "com.trailrelay.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -29,7 +29,7 @@ android {
         }
         release {
             isDebuggable = false
-            // Sign locally with Android Studio's Generate Signed Bundle/APK wizard.
+            // Sign locally with the existing identity; see docs/releasing.md.
             // Keep signing credentials outside the project; CLI release builds are unsigned.
             optimization {
                 enable = false

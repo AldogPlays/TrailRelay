@@ -6,11 +6,13 @@ Open the app → see your location on USGS aerial imagery → import or download
 
 ## What works today
 
-- USGS / The National Map aerial imagery with foreground GPS location, follow, and recenter.
+- USGS / The National Map Aerial, Hybrid, and Topo maps with a remembered map choice.
+- Foreground GPS location, North Up / Heading Up, follow, recenter, and a GPS speed HUD.
+- Open either trail endpoint in an installed map app.
 - A map-first Browse view of saved GPX trails, plus a selected-trail details sheet and overlapping-route chooser.
 - Local GPX import and a persistent **My Trails** library.
 - Community search, filtering, route preview, and GPX downloads.
-- **Downloads & Storage** for route files and offline aerial packages, with progress, pause/resume, and separate removal.
+- **Downloads & Storage** for route files and independent offline Aerial, Hybrid, and Topo packages, with progress, pause/resume, and separate removal.
 - **Settings** with Keep screen awake.
 - No TrailRelay account, backend, or user API key required.
 
@@ -18,13 +20,13 @@ TrailRelay is Android-only, written in Kotlin with Android Views/XML and MapLibr
 
 ## Using it offline
 
-Open a locally stored trail and choose **Download Offline**. Review the coverage information and start the download. Wait for **Available Offline**, then check the trail with networking disabled before heading out.
+Choose a map mode, open a locally stored trail, and choose **Download Offline**. Review the coverage information and start the download. Wait for **Available Offline**, then check the trail with networking disabled before heading out.
 
-Coverage currently uses the trail's bounding box with about 1.5 km of padding on each side, at zooms 12–16. Large areas are rejected before downloading. Imagery outside the downloaded area or zoom range may need a network connection. An interrupted download can be resumed from the trail's offline screen.
+New downloads follow a corridor around the GPX trail with about 1.5 km of surrounding context, at zooms 12–16. Large downloads are rejected before downloading. Aerial, Hybrid, and Topo coverage must be downloaded separately; existing aerial packages remain usable. Map tiles outside the downloaded corridor or zoom range may need a network connection. An interrupted download can be resumed from Downloads & Storage.
 
 ## Release and safety
 
-The current release is **0.2.0**. See the [release notes](docs/release-notes-0.2.0.md) and [GitHub Releases](https://github.com/AldogPlays/TrailRelay/releases).
+The current release is **0.3.0**. See the [release notes](docs/release-notes-0.3.0.md) and [GitHub Releases](https://github.com/AldogPlays/TrailRelay/releases).
 
 TrailRelay is a solo project. Trail and catalog metadata may be incomplete, and downloaded coverage should be checked before relying on it remotely. You are responsible for checking trail legality, closures, land access, and safe navigation. Keep another navigation and safety option available; TrailRelay should not be your sole system in remote areas.
 
@@ -32,7 +34,7 @@ TrailRelay is a solo project. Trail and catalog metadata may be incomplete, and 
 
 Community trails are GPX-based. The public static catalog and trail data live in [TrailRelay-Trails](https://github.com/AldogPlays/TrailRelay-Trails), with the catalog hosted on GitHub Pages. The app searches and filters the catalog locally and saves downloaded GPX files for offline use.
 
-Aerial imagery currently comes from USGS / The National Map's `USGSImageryOnly` service. Attribution: **USDA, USGS The National Map: Orthoimagery**. See [The National Map](https://www.usgs.gov/programs/national-geospatial-program/national-map). TrailRelay is an independent project and is not endorsed by USGS.
+Maps come from USGS / The National Map: `USGSImageryOnly` (Aerial), `USGSImageryTopo` (Hybrid), and `USGSTopo` (Topo). Aerial attribution: **USDA, USGS The National Map: Orthoimagery**; Hybrid and Topo credits are shown in the map chooser. See [The National Map](https://www.usgs.gov/programs/national-geospatial-program/national-map). TrailRelay is an independent project and is not endorsed by USGS.
 
 ## Building
 
@@ -83,8 +85,6 @@ Keep trails local, avoid account requirements, and use portable GPX files that u
 This roadmap is non-binding; priorities may change:
 
 - UI/UX polish
-- Improved offline corridor planning
-- A topo map option
 - Trail catalog improvements
 - Tracks and waypoints
 
