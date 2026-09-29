@@ -28,15 +28,11 @@ Do not turn TrailRelay into a generic GIS application.
 
 USGS / The National Map supplies the map imagery.
 
-Primary map:
+Available maps:
 
-* USGSImageryOnly
-* aerial imagery
-* default map
-
-Potential secondary map later:
-
-* USGSTopo
+* Aerial — USGSImageryOnly (default)
+* Hybrid — USGSImageryTopo
+* Topo — USGSTopo
 
 Do not add other map providers unless explicitly requested.
 
@@ -104,7 +100,8 @@ Do not introduce Room or another ORM unless explicitly requested later.
 
 SQLite stores trail metadata and indexes.
 
-GPX files remain ordinary files in app-private storage.
+GPX files remain ordinary files in app-private storage. Parsed route geometry may
+be retained in a disposable app-private derived cache; GPX remains canonical.
 
 IMPORTED and COMMUNITY records use the same Trail model.
 
@@ -139,7 +136,8 @@ Community Preview uses the same map selection experience without presenting the
 route as saved. Taps on overlapping routes use a chooser.
 
 Top-level destinations are Map, My Trails, Community, Downloads & Storage, and
-Settings. Settings currently contains Keep screen awake.
+Settings. Settings contains Keep screen awake, Heading offset, and a diagnostic
+Show offline coverage toggle.
 
 Keep it uncluttered.
 
@@ -156,7 +154,7 @@ tapping of thin trail lines the only way to select a trail.
 
 ## Offline maps
 
-Offline USGS aerial imagery uses MapLibre offline regions:
+Offline USGS imagery/topography uses MapLibre offline regions:
 
 selected GPX trail
 → determine geometry/bounds
@@ -165,7 +163,7 @@ selected GPX trail
 → work with networking disabled
 
 Downloads provide visible progress and support pause, resume, and deletion.
-Downloads & Storage manages GPX route files and aerial packages as separate
+Downloads & Storage manages GPX route files and map packages as separate
 resources, including separate removal actions and available size information.
 Keep MapLibre's offline region architecture rather than inventing tile storage.
 

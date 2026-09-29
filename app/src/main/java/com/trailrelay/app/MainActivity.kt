@@ -1,5 +1,10 @@
 package com.trailrelay.app
 
+import android.location.Location
+import com.trailrelay.app.trails.PreparedRoute
+import com.trailrelay.app.trails.RoutePosition
+import com.trailrelay.app.trails.TrailPositionQuality
+import com.trailrelay.app.trails.TrackPoint
 import android.Manifest
 import android.content.Intent
 import android.content.ActivityNotFoundException
@@ -84,6 +89,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mapShell: MapShell
     private lateinit var offline: OfflineDownloads
     private val worker = Executors.newSingleThreadExecutor()
+    private val browseWorker = Executors.newSingleThreadExecutor()
+    private val contextWorker = Executors.newSingleThreadExecutor()
+    private var contextBusy = false
+    private var browseLoading = false
+    private var browseAgain = false
+    private lateinit var geometryCache: com.trailrelay.app.trails.SavedGeometryCache
+    private var selectedEndpoints: com.trailrelay.app.trails.TrailEndpoints? = null
+    private var lastLocationTiming = 0L
     private val selection = MapSelectionState()
     private var selectedTrail: Trail? = null
     private var selectedEntry: CatalogEntry? = null
@@ -98,13 +111,29 @@ class MainActivity : AppCompatActivity() {
     private var browseInfo: Map<String, Trail> = emptyMap()
     private var catalogInfo: Map<String, CatalogEntry> = emptyMap()
     private lateinit var selectionBack: OnBackPressedCallback
-    private val offlineListener: () -> Unit = { renderCard() }
+    private var offlineRenderPending = false
+    private val offlineRender = Runnable {
+        offlineRenderPending = false
+        if (!isDestroyed) renderCard()
+    }
+    private val offlineListener: () -> Unit = {
+        if (::trailMap.isInitialized) trailMap.updateOfflineCoverage(offline.allPackages())
+        if (selection.selection != null && !offlineRenderPending) {
+            offlineRenderPending = true
+            speedHandler.postDelayed(offlineRender, 250L)
+        }
+    }
     private var resumed = false
     private var locationStatus: Int? = null
     private var mapStatus: Int? = null
     private var permissionRequested = false
     private var orientation = MapOrientation.NORTH_UP
     private var mapMode = MapMode.AERIAL
+    private var contextFix: Location? = null
+    private var preparedTrack: GpxTrack? = null
+    private var preparedRoute: PreparedRoute? = null
+    private var projectedFix: Location? = null
+    private var routePosition: RoutePosition? = null
     private val speedEstimator = SpeedEstimator()
     private val speedDiagnosticsEnabled by lazy {
         (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
@@ -152,6 +181,15 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Perf.configure(this)
+        val activityStarted = Perf.start()
+        geometryCache = com.trailrelay.app.trails.SavedGeometryCache(filesDir,
+            com.trailrelay.app.trails.DerivedRouteCache(filesDir, report = Perf::routeCache)) { trail, file ->
+            val started = Perf.start()
+            val result = runCatching { file.inputStream().use(GpxParser::parse) }
+            Perf.end("gpx_parse", started, "trail=${trail.id.hashCode()} success=${result.isSuccess}")
+            result.getOrThrow()
+        }
         enableEdgeToEdge()
         MapLibre.getInstance(this)
         offline = OfflineDownloads.get(this)
@@ -167,7 +205,7 @@ class MainActivity : AppCompatActivity() {
         orientation = MapOrientation.fromPreference(getSharedPreferences(SettingsActivity.PREFERENCES, MODE_PRIVATE)
             .getString(ORIENTATION_PREFERENCE, null))
         mapMode = MapMode.selected(this)
-        trailMap = TrailMap(this, mapView, savedInstanceState) {
+        trailMap = TrailMap(this, mapView, savedInstanceState, activityStarted, mapMode) {
             mapStatus = it
             renderStatus()
         }
@@ -179,6 +217,10 @@ class MainActivity : AppCompatActivity() {
         trailMap.onTrailTap = ::chooseMapHit
         trailMap.onPan = ::renderOrientation
         location = ForegroundLocation(this, { fix ->
+            val measureLocation = SystemClock.elapsedRealtime() - lastLocationTiming >= 5_000L
+            val locationStarted = if (measureLocation) Perf.start() else 0L
+            if (measureLocation) lastLocationTiming = SystemClock.elapsedRealtime()
+            contextFix = Location(fix)
             trailMap.showLocation(fix)
             val nowNanos = SystemClock.elapsedRealtimeNanos()
             val reading = speedEstimator.accept(SpeedFix(fix.latitude, fix.longitude,
@@ -192,12 +234,15 @@ class MainActivity : AppCompatActivity() {
                     "state=${reading.source.name.lowercase()}")
             }
             renderSpeed()
+            Perf.end("location_ui", locationStarted)
         }) {
             locationStatus = it
             if (it == R.string.location_disabled || it == R.string.permission_needed ||
                 it == R.string.location_failed) clearSpeed()
             renderStatus()
         }
+        findViewById<ImageButton>(R.id.zoom_in).setOnClickListener { trailMap.zoomBy(1.0) }
+        findViewById<ImageButton>(R.id.zoom_out).setOnClickListener { trailMap.zoomBy(-1.0) }
         findViewById<ImageButton>(R.id.orientation).setOnClickListener {
             orientation = trailMap.nextOrientationPress()
             getSharedPreferences(SettingsActivity.PREFERENCES, MODE_PRIVATE).edit {
@@ -212,7 +257,12 @@ class MainActivity : AppCompatActivity() {
             }
             renderOrientation()
         }
-        status.setOnClickListener { if (mapStatus != null) trailMap.loadStyle() }
+        findViewById<View>(R.id.network_status).setOnClickListener {
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.map_source_status).setMessage(R.string.map_source_unavailable)
+                .setPositiveButton(R.string.retry_map) { _, _ -> trailMap.retryStyle() }
+                .setNegativeButton(android.R.string.ok, null).show()
+        }
         findViewById<ImageButton>(R.id.recenter).setOnClickListener {
             if (!location.hasPermission()) requestLocation() else {
                 val hasFix = trailMap.recenter()
@@ -310,6 +360,7 @@ class MainActivity : AppCompatActivity() {
                             putString(MapMode.PREFERENCE, mode.id)
                         }
                         trailMap.loadStyle(mode)
+                        trailMap.updateOfflineCoverage(offline.allPackages())
                         renderModeControl()
                         renderCard()
                         renderStatus()
@@ -323,40 +374,87 @@ class MainActivity : AppCompatActivity() {
     private fun renderModeControl() {
         findViewById<ImageButton>(R.id.map_layers).apply {
             contentDescription = getString(R.string.map_selector_current, getString(mapMode.label))
+            tooltipText = contentDescription
         }
     }
 
     private fun refreshBrowse() {
+        if (browseLoading) { browseAgain = true; return }
+        browseLoading = true
         val request = ++browseRequest
-        worker.execute {
+        val started = Perf.start()
+        browseWorker.execute {
             val result = runCatching {
-                val routes = TrailStore(applicationContext).use { store ->
-                    store.list().filter(store::hasLocalGpx).mapNotNull { trail ->
-                        runCatching { trail to store.load(trail) }.getOrNull()
+                val dbStarted = Perf.start()
+                val trails = TrailStore(applicationContext).use { it.list() }
+                Perf.end("browse_db", dbStarted, "routes=${trails.size}")
+                geometryCache.retain(trails.map { it.id }.toSet())
+                runOnUiThread {
+                    if (!isDestroyed && request == browseRequest) {
+                        val ids = trails.map { it.id }.toSet()
+                        browseInfo = trails.associateBy(Trail::id)
+                        browseTracks = browseTracks.filterKeys { it in ids }
+                        trailMap.showBrowseTrails(browseTracks)
                     }
                 }
-                routes to CommunityClient(applicationContext).cached().orEmpty()
-            }
-            runOnUiThread {
-                if (!isDestroyed && request == browseRequest) result.onSuccess { (routes, entries) ->
-                    browseTracks = routes.associate { it.first.id to it.second }
-                    browseInfo = routes.associate { it.first.id to it.first }
-                    catalogInfo = entries.associateBy(CatalogEntry::id)
-                    trailMap.showBrowseTrails(browseTracks)
-                    val current = selection.selection
-                    if (current is MapSelection.Preview) {
-                        routes.firstOrNull { it.first.id == communityTrailId(current.catalogId) }?.let { (trail, track) ->
-                            selection.saved(trail.id)
-                            selectedTrail = trail
-                            selectedTrack = track
-                            previewMessage = null
-                            trailMap.showTrail(trail, track, false)
-                            renderCard()
+                // Each completion is published independently; a slow/broken GPX cannot gate the library.
+                var remaining = trails.size // Read/written only by the main-thread completion callbacks.
+                var published = false
+                if (trails.isEmpty()) runOnUiThread { finishBrowse(request, started) }
+                trails.forEach { trail ->
+                    geometryCache.request(trail).whenComplete { track, error ->
+                        runOnUiThread {
+                            if (!isDestroyed && request == browseRequest) {
+                                if (error == null) {
+                                    if (!published) {
+                                        published = true
+                                        Perf.end("browse_first_available", started)
+                                    }
+                                    if (browseTracks[trail.id] !== track) {
+                                        browseTracks = browseTracks + (trail.id to track)
+                                        trailMap.showBrowseTrails(browseTracks)
+                                    }
+                                    val current = selection.selection
+                                    if (current is MapSelection.Preview && trail.id == communityTrailId(current.catalogId)) {
+                                        selection.saved(trail.id)
+                                        selectedTrail = trail
+                                        selectedTrack = track
+                                        previewMessage = null
+                                        trailMap.showTrail(trail, track, false)
+                                        renderCard()
+                                    }
+                                } else {
+                                    browseTracks = browseTracks - trail.id
+                                    trailMap.showBrowseTrails(browseTracks)
+                                }
+                                remaining--
+                                if (remaining == 0) finishBrowse(request, started)
+                            }
                         }
                     }
-                }.onFailure { Toast.makeText(this, R.string.library_load_failed, Toast.LENGTH_LONG).show() }
+                }
+                val entries = CommunityClient(applicationContext).cached().orEmpty()
+                runOnUiThread {
+                    if (!isDestroyed && request == browseRequest) catalogInfo = entries.associateBy(CatalogEntry::id)
+                }
+            }
+            result.onFailure {
+                runOnUiThread {
+                    if (!isDestroyed && request == browseRequest) {
+                        Toast.makeText(this, R.string.library_load_failed, Toast.LENGTH_LONG).show()
+                        finishBrowse(request, started)
+                    }
+                }
             }
         }
+    }
+
+    private fun finishBrowse(request: Int, started: Long) {
+        if (isDestroyed || request != browseRequest || !browseLoading) return
+        Perf.end("browse_available", started, "routes=${browseTracks.size}")
+        Perf.end("route_cache", started, geometryCache.diskSummary())
+        browseLoading = false
+        if (browseAgain) { browseAgain = false; refreshBrowse() }
     }
 
     private fun chooseMapHit(ids: List<String>) {
@@ -381,7 +479,8 @@ class MainActivity : AppCompatActivity() {
                 trail.remoteId?.let(catalogInfo::get)?.difficulty,
                 getString(if (trail.source == TrailSource.IMPORTED) R.string.source_imported else R.string.source_community))
                 .joinToString(" · ")
-            content.addView(MaterialButton(this).apply {
+            content.addView(layoutInflater.inflate(R.layout.chooser_action, content, false).apply {
+                this as MaterialButton
                 text = "${trail.name}\n$detail"
                 isAllCaps = false
                 setOnClickListener { dialog.dismiss(); selectLocal(trail.id) }
@@ -403,17 +502,7 @@ class MainActivity : AppCompatActivity() {
         trailMap.beginSelection()
         renderCard()
         val request = ++trailRequest
-        worker.execute {
-            val result = runCatching {
-                TrailStore(applicationContext).use { store ->
-                    val trail = store.get(id) ?: error("Trail record is missing")
-                    val hasLocal = store.hasLocalGpx(trail)
-                    val track = resolveMapGeometry(trail.source, hasLocal, { store.load(trail) },
-                        { error("Local route geometry is unavailable") })
-                    Triple(trail, track, CommunityClient(applicationContext).cached()
-                        ?.firstOrNull { it.id == trail.remoteId })
-                }
-            }
+        fun publish(result: Result<Triple<Trail, GpxTrack, CatalogEntry?>>) {
             runOnUiThread {
                 if (!isDestroyed && request == trailRequest) {
                     busy = false
@@ -430,6 +519,20 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+        }
+        // Metadata reads are independent of Community networking; GPX completion never blocks this lane.
+        browseWorker.execute {
+            runCatching {
+                val trail = TrailStore(applicationContext).use { store ->
+                    val saved = store.get(id) ?: error("Trail record is missing")
+                    check(store.hasLocalGpx(saved)) { "Local route geometry is unavailable" }
+                    saved
+                }
+                val entry = CommunityClient(applicationContext).cached()?.firstOrNull { it.id == trail.remoteId }
+                geometryCache.request(trail).whenComplete { track, error ->
+                    publish(if (error == null) Result.success(Triple(trail, track, entry)) else Result.failure(error))
+                }
+            }.onFailure { publish(Result.failure(it)) }
         }
     }
 
@@ -462,7 +565,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 val (local, track) = TrailStore(applicationContext).use { store ->
                     val saved = store.get(communityTrailId(entry.id))
-                    val localTrack = saved?.let(store::loadUsableGpx)
+                    val localTrack = saved?.let { runCatching { geometryCache.request(it).get() }.getOrNull() }
                     val geometry = resolveMapGeometry(TrailSource.COMMUNITY, localTrack != null,
                         { checkNotNull(localTrack) }, {
                             val bytes = ByteArrayOutputStream().also {
@@ -513,7 +616,7 @@ class MainActivity : AppCompatActivity() {
         renderCard()
         worker.execute {
             val result = runCatching { TrailStore(applicationContext).use { store ->
-                store.downloadIfMissing(entry).let { it to store.load(it) }
+                store.downloadIfMissing(entry).let { it to geometryCache.request(it).get() }
             } }
             runOnUiThread {
                 if (!isDestroyed && request == trailRequest) {
@@ -554,6 +657,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderCard() {
+        renderTrailPosition()
         renderOrientation()
         val current = selection.selection
         selectionBack.isEnabled = current != null
@@ -590,12 +694,12 @@ class MainActivity : AppCompatActivity() {
             visibility = if (text.isBlank()) View.GONE else View.VISIBLE
         }
         findViewById<TextView>(R.id.selection_meta).apply {
-            text = listOfNotNull(entry?.state, entry?.region,
-                entry?.vehicleTypes?.takeIf { it.isNotEmpty() }?.joinToString(", "),
-                if (preview) getString(R.string.community_preview) else null
-            ).joinToString(" · ")
+            text = listOfNotNull(entry?.region, entry?.state).joinToString(" · ")
             visibility = if (text.isBlank()) View.GONE else View.VISIBLE
         }
+        findViewById<TextView>(R.id.selection_vehicles).text = entry?.vehicleTypes?.joinToString(", ")
+        findViewById<View>(R.id.selection_vehicles_row).visibility =
+            if (entry?.vehicleTypes.isNullOrEmpty()) View.GONE else View.VISIBLE
         findViewById<TextView>(R.id.selection_source).text = getString(when {
             trail?.source == TrailSource.IMPORTED -> R.string.source_imported
             entry != null || trail?.source == TrailSource.COMMUNITY -> R.string.source_community
@@ -605,6 +709,8 @@ class MainActivity : AppCompatActivity() {
             text = entry?.description ?: trail?.description
             visibility = if (text.isNullOrBlank()) View.GONE else View.VISIBLE
         }
+        findViewById<View>(R.id.selection_description_section).visibility =
+            findViewById<TextView>(R.id.selection_description).visibility
         findViewById<Chip>(R.id.selection_route_chip).showRouteStatus(when {
             busy -> RouteChipState.CHECKING
             preview -> RouteChipState.NOT_SAVED
@@ -645,7 +751,7 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.selection_details).isEnabled = trail != null || entry != null
         findViewById<Button>(R.id.selection_open_maps).visibility =
-            if (selectedTrack?.endpoints() != null) View.VISIBLE else View.GONE
+            if (selectedEndpoints != null) View.VISIBLE else View.GONE
         findViewById<Button>(R.id.selection_action).apply {
             visibility = if (preview || trail != null) View.VISIBLE else View.GONE
             text = getString(when {
@@ -684,15 +790,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderStatus() {
-        val messages = listOfNotNull(mapStatus, locationStatus).distinct()
         val network = getSystemService(ConnectivityManager::class.java)
         val hasInternet = network.getNetworkCapabilities(network.activeNetwork)
             ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
         val coverageWarning = selectedTrail?.takeIf { !hasInternet &&
             offline.loaded && offline.packageFor(it.id, mapMode)?.complete != true }
             ?.let { getString(R.string.map_coverage_unavailable, getString(mapMode.label)) }
-        status.text = (messages.map(::getString) + listOfNotNull(coverageWarning)).joinToString("\n")
+        status.text = listOfNotNull(locationStatus).map(::getString).joinToString("\n")
         status.visibility = if (status.text.isBlank()) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.network_status).visibility = if (mapStatus != null || coverageWarning != null)
+            View.VISIBLE else View.GONE
     }
 
     private fun renderOrientation() {
@@ -702,23 +809,116 @@ class MainActivity : AppCompatActivity() {
             contentDescription = getString(if (trailMap.northResetPending) R.string.orientation_reset_north
                 else if (orientation == MapOrientation.NORTH_UP)
                 R.string.orientation_north_up else R.string.orientation_heading_up)
+            tooltipText = contentDescription
             isActivated = orientation == MapOrientation.HEADING_UP && !trailMap.northResetPending
         }
     }
 
     private fun clearSpeed() {
+        contextFix = null
         speedEstimator.reset()
         renderSpeed()
     }
 
     private fun renderSpeed() {
+        renderTrailPosition()
         val mph = speedEstimator.reading(SystemClock.elapsedRealtimeNanos()).mph
         findViewById<TextView>(R.id.speed_hud).text = if (mph == null)
             getString(R.string.speed_unavailable) else getString(R.string.speed_mph, mph)
     }
 
+    private fun renderTrailPosition() {
+        val view = findViewById<View>(R.id.trail_position)
+        if (preparedTrack !== selectedTrack) {
+            preparedTrack = selectedTrack
+            preparedRoute = null
+            selectedEndpoints = null
+            projectedFix = null
+            routePosition = null
+        }
+        val fix = contextFix
+        val quality = TrailPositionQuality
+        val age = fix?.let { (SystemClock.elapsedRealtimeNanos() - it.elapsedRealtimeNanos) / 1_000_000L }
+        val usable = fix != null && age != null && quality.usable(age, fix.accuracy)
+        val track = selectedTrack
+        if (!contextBusy && track != null && (preparedRoute == null || usable && projectedFix !== fix)) {
+            contextBusy = true
+            val retained = preparedRoute
+            val inputFix = fix.takeIf { usable }
+            contextWorker.execute {
+                val prepareStarted = Perf.start()
+                val route = retained ?: PreparedRoute(track)
+                val endpoints = if (retained == null) track.endpoints() else null
+                if (retained == null) Perf.end("context_prepare", prepareStarted)
+                val projectionStarted = Perf.start()
+                val position = inputFix?.let { route.nearest(TrackPoint(it.latitude, it.longitude)) }
+                if (inputFix != null) Perf.end("context_project", projectionStarted)
+                runOnUiThread {
+                    if (!isDestroyed) {
+                        contextBusy = false
+                        if (selectedTrack === track) {
+                            preparedRoute = route
+                            if (retained == null) selectedEndpoints = endpoints
+                            projectedFix = inputFix
+                            routePosition = position
+                        }
+                        if (selectedTrack === track && retained == null) renderCard() else renderTrailPosition()
+                    }
+                }
+            }
+        }
+        // Keep the last still-fresh result visible while the newest fix is being projected.
+        // Its own timestamp and accuracy control display; never relabel old analysis as a new fix.
+        val positionFix = projectedFix
+        val position = routePosition.takeIf { usable && positionFix != null && quality.usable(
+            (SystemClock.elapsedRealtimeNanos() - positionFix.elapsedRealtimeNanos) / 1_000_000L,
+            positionFix.accuracy) }
+        var changed = false
+        fun show(target: View, visible: Boolean) {
+            val visibility = if (visible) View.VISIBLE else View.GONE
+            if (target.visibility != visibility) { target.visibility = visibility; changed = true }
+        }
+        fun metric(id: Int, text: String, description: String) {
+            findViewById<TextView>(id).apply {
+                if (this.text.toString() != text) { this.text = text; changed = true }
+                contentDescription = description
+            }
+        }
+        show(view, preparedRoute?.isValid == true)
+        show(findViewById(R.id.position_unavailable), position == null)
+        show(findViewById(R.id.position_metrics), position != null)
+        val loop = selectedEndpoints?.end == null && selectedEndpoints != null
+        show(findViewById(R.id.position_loop), loop && position != null)
+        show(findViewById(R.id.position_a_group), !loop)
+        show(findViewById(R.id.position_b_group), !loop)
+        if (position != null) {
+            val accuracy = positionFix!!.accuracy
+            fun distance(meters: Double): String = when {
+                meters / 0.3048 < quality.roundingFeet(accuracy) ->
+                    getString(R.string.trail_position_distance_within, quality.roundingFeet(accuracy))
+                meters < 160.9344 ->
+                    getString(R.string.trail_position_distance_feet, quality.roundedFeet(meters, accuracy))
+                else -> getString(R.string.trail_position_distance_miles, meters / 1609.344)
+            }
+            for ((id, label, meters) in listOf(Triple(R.id.position_a, "A", position.toAMeters),
+                    Triple(R.id.position_b, "B", position.toBMeters))) {
+                val value = meters?.let(::distance) ?: getString(R.string.position_gap_short)
+                metric(id, value, if (meters == null) getString(R.string.trail_position_gap, label)
+                    else getString(R.string.trail_position_endpoint, label, value))
+            }
+            val from = when {
+                quality.nearTrail(position.fromRouteMeters, accuracy) -> getString(R.string.trail_position_near)
+                position.fromRouteMeters < 160.9344 -> getString(R.string.position_feet_short,
+                    quality.roundedFeet(position.fromRouteMeters, accuracy))
+                else -> getString(R.string.position_miles_short, position.fromRouteMeters / 1609.344)
+            }
+            metric(R.id.position_from, from, getString(R.string.from_trail_label) + ": " + from)
+        }
+        if (changed) mapShell.refreshContentHeight()
+    }
+
     private fun openSelectedTrailInMaps() {
-        val endpoints = selectedTrack?.endpoints() ?: return
+        val endpoints = selectedEndpoints ?: return
         val end = endpoints.end
         if (end == null) {
             openMapPoint(endpoints.start)
@@ -738,7 +938,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun openMapPoint(point: com.trailrelay.app.trails.TrackPoint) {
+    private fun openMapPoint(point: TrackPoint) {
         val coordinates = "${point.latitude},${point.longitude}"
         val uri = Uri.parse("geo:$coordinates?q=${Uri.encode(coordinates)}")
         try {
@@ -764,6 +964,10 @@ class MainActivity : AppCompatActivity() {
             window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         resumed = true
+        val settings = getSharedPreferences(SettingsActivity.PREFERENCES, MODE_PRIVATE)
+        trailMap.setHeadingOffset(settings.getInt(SettingsActivity.HEADING_OFFSET, 0))
+        trailMap.setOfflineCoverageVisible(settings.getBoolean(SettingsActivity.SHOW_OFFLINE_COVERAGE, false))
+        trailMap.updateOfflineCoverage(offline.allPackages())
         trailMap.resumeCompass()
         refreshLocation()
         speedHandler.removeCallbacks(speedRefresh)
@@ -781,6 +985,8 @@ class MainActivity : AppCompatActivity() {
     }
     override fun onStop() {
         offline.listeners.remove(offlineListener)
+        speedHandler.removeCallbacks(offlineRender)
+        offlineRenderPending = false
         mapView.onStop()
         super.onStop()
     }
@@ -794,6 +1000,12 @@ class MainActivity : AppCompatActivity() {
     }
     override fun onLowMemory() { super.onLowMemory(); mapView.onLowMemory() }
     override fun onDestroy() {
+        speedHandler.removeCallbacks(offlineRender)
+        ++browseRequest
+        ++trailRequest
+        geometryCache.close()
+        browseWorker.shutdownNow()
+        contextWorker.shutdownNow()
         worker.shutdown()
         location.stop()
         trailMap.destroy()

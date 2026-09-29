@@ -1,0 +1,11 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="horizontal" android:paddingBottom="@dimen/space_related">
+    <TextView android:id="@+id/metadata_label" android:layout_width="0dp"
+        android:layout_height="wrap_content" android:layout_weight="1"
+        android:paddingEnd="@dimen/space_compact" android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="@color/trail_on_surface_variant" />
+    <TextView android:id="@+id/metadata_value" android:layout_width="0dp"
+        android:layout_height="wrap_content" android:layout_weight="2"
+        android:textAppearance="?attr/textAppearanceBodyMedium" />
+</LinearLayout>

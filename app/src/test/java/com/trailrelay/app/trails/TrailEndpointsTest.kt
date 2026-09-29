@@ -4,6 +4,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class TrailEndpointsTest {
+    @Test fun markerLabelsAreNeutralAndLoopsHaveOnlyOneMarker() {
+        val a = TrackPoint(40.0, -105.0)
+        val b = TrackPoint(40.01, -105.0)
+        assertEquals(listOf(TrailEndpointMarker(a, "A"), TrailEndpointMarker(b, "B")),
+            GpxTrack(null, null, listOf(listOf(a, b))).endpointMarkers())
+        assertEquals(listOf(TrailEndpointMarker(a, "A/B")),
+            GpxTrack(null, null, listOf(listOf(a, b, a))).endpointMarkers())
+        assertTrue(GpxTrack(null, null, listOf(listOf(a, a))).endpointMarkers().isEmpty())
+    }
+
     @Test fun takesFirstAndLastValidPointsAcrossSegments() {
         val bad = TrackPoint(Double.NaN, 0.0)
         val start = TrackPoint(40.0, -105.0)
@@ -19,6 +29,15 @@ class TrailEndpointsTest {
         val track = GpxTrack(null, null, listOf(listOf(start, TrackPoint(40.1, -105.1), nearStart)))
         assertEquals(TrailEndpoints(start, null), track.endpoints())
         assertNull(GpxTrack(null, null, listOf(emptyList())).endpoints())
+    }
+
+    @Test fun disconnectedNearbyEndsAreNotAClosedLoop() {
+        val a = TrackPoint(40.0, -105.0)
+        val middle = TrackPoint(40.01, -105.0)
+        val b = TrackPoint(40.00005, -105.0)
+        val track = GpxTrack(null, null, listOf(listOf(a, middle), listOf(middle, b)))
+        assertEquals(TrailEndpoints(a, b), track.endpoints())
+        assertEquals(listOf("A", "B"), track.endpointMarkers().map { it.label })
     }
 
     @Test fun nearbyButDistinctEndpointsStillOfferBoth() {

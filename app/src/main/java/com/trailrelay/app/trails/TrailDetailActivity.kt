@@ -33,6 +33,7 @@ class TrailDetailActivity : AppCompatActivity() {
     private lateinit var model: TrailDetailModel
     private lateinit var downloads: OfflineDownloads
     private var wasDownloadingRoute = false
+    private var renderedFields: List<Pair<String, String>> = emptyList()
     private val offlineListener: () -> Unit = { render() }
     private val mapMode get() = MapMode.selected(this)
 
@@ -126,16 +127,27 @@ class TrailDetailActivity : AppCompatActivity() {
             visibility = if (text.isNullOrBlank()) View.GONE else View.VISIBLE
         }
         val details = findViewById<LinearLayout>(R.id.detail_fields)
-        details.removeAllViews()
+        findViewById<View>(R.id.detail_description_section).visibility =
+            findViewById<TextView>(R.id.detail_description).visibility
         val distance = entry?.distanceMiles ?: trail?.distanceMeters?.div(1609.344)
-        distance?.let { field(details, getString(R.string.distance_label), String.format(Locale.getDefault(), "%.1f mi", it)) }
-        entry?.difficulty?.let { field(details, getString(R.string.difficulty_label), it) }
-        entry?.state?.let { field(details, getString(R.string.state_label), it) }
-        entry?.region?.let { field(details, getString(R.string.region_label), it) }
-        entry?.vehicleTypes?.takeIf { it.isNotEmpty() }?.let {
-            field(details, getString(R.string.vehicle_types_label), it.joinToString(", "))
+        findViewById<TextView>(R.id.detail_summary).apply {
+            text = listOfNotNull(distance?.let { String.format(Locale.getDefault(), "%.1f mi", it) },
+                entry?.difficulty).joinToString(" · ")
+            visibility = if (text.isBlank()) View.GONE else View.VISIBLE
         }
-        findViewById<View>(R.id.detail_fields_card).visibility = if (details.childCount == 0) View.GONE else View.VISIBLE
+        findViewById<TextView>(R.id.detail_location).apply {
+            text = listOfNotNull(entry?.region, entry?.state).joinToString(" · ")
+            visibility = if (text.isBlank()) View.GONE else View.VISIBLE
+        }
+        val fields = listOfNotNull(entry?.vehicleTypes?.takeIf { it.isNotEmpty() }?.let {
+            getString(R.string.vehicle_types_label) to it.joinToString(", ")
+        })
+        if (fields != renderedFields) {
+            renderedFields = fields
+            details.removeAllViews()
+            fields.forEach { (label, value) -> field(details, label, value) }
+        }
+        findViewById<View>(R.id.detail_fields_card).visibility = if (trail == null && entry == null) View.GONE else View.VISIBLE
         findViewById<TextView>(R.id.detail_message).apply {
             text = model.message.orEmpty()
             visibility = if (text.isBlank()) View.GONE else View.VISIBLE
@@ -203,11 +215,9 @@ class TrailDetailActivity : AppCompatActivity() {
     }
 
     private fun field(parent: LinearLayout, label: String, value: String) {
-        val row = TextView(this).apply {
-            text = "$label\n$value"
-            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyLarge)
-            setPadding(0, 0, 0, resources.getDimensionPixelSize(R.dimen.space_compact))
-        }
+        val row = layoutInflater.inflate(R.layout.detail_metadata_row, parent, false)
+        row.findViewById<TextView>(R.id.metadata_label).text = label
+        row.findViewById<TextView>(R.id.metadata_value).text = value
         parent.addView(row)
     }
 

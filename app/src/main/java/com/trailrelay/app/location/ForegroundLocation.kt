@@ -19,6 +19,8 @@ import android.os.SystemClock
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.trailrelay.app.R
+import com.trailrelay.app.trails.TrackPoint
+import com.trailrelay.app.trails.distanceMeters
 
 /** Platform-only foreground updates. No Activity or location work survives stop(). */
 class ForegroundLocation(
@@ -30,6 +32,7 @@ class ForegroundLocation(
     private val handler = Handler(Looper.getMainLooper())
     private var started = false
     private var latest: Location? = null
+    private var lastQualityLog = 0L
     private val speedDiagnosticsEnabled by lazy {
         (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     }
@@ -98,13 +101,14 @@ class ForegroundLocation(
     override fun onLocationChanged(location: Location) {
         if (!started) return
         if (!isUsable(location)) {
-            logFiltered(location, "unusable")
+            logFiltered(location, if (ageMillis(location) !in 0..LocationFixQuality.MAX_AGE_MS)
+                "stale_or_future" else "invalid_fix")
             return
         }
         val previous = latest
         // Prevent a coarse network fix from displacing a recent, more accurate GPS fix.
-        if (previous != null && location.elapsedRealtimeNanos < previous.elapsedRealtimeNanos) {
-            logFiltered(location, "older_than_latest")
+        if (previous != null && location.elapsedRealtimeNanos <= previous.elapsedRealtimeNanos) {
+            logFiltered(location, "duplicate_or_older")
             return
         }
         if (previous != null && ageMillis(previous) < 15_000 &&
@@ -112,7 +116,17 @@ class ForegroundLocation(
             logFiltered(location, "less_accurate")
             return
         }
+        if (previous != null && LocationFixQuality.implausibleJump(
+                distanceMeters(TrackPoint(previous.latitude, previous.longitude),
+                    TrackPoint(location.latitude, location.longitude)),
+                (location.elapsedRealtimeNanos - previous.elapsedRealtimeNanos) / 1_000_000,
+                previous.accuracy, location.accuracy)) {
+            logFiltered(location, "implausible_jump")
+            return
+        }
         latest = Location(location)
+        logFiltered(location, if (LocationFixQuality.follow(ageMillis(location), location.accuracy))
+            "accepted_follow" else "accepted_uncertain_puck")
         handler.removeCallbacks(waiting)
         onStatus(null)
         onLocation(Location(location))
@@ -120,11 +134,14 @@ class ForegroundLocation(
 
     private fun logFiltered(location: Location, reason: String) {
         if (!speedDiagnosticsEnabled) return
-        Log.d("TrailRelaySpeed", "provider=${location.provider ?: "unknown"} " +
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastQualityLog < 2_000) return
+        lastQualityLog = now
+        Log.d("TrailRelayLocation", "provider=${location.provider ?: "unknown"} " +
             "hasSpeed=${location.hasSpeed()} rawMps=${if (location.hasSpeed()) location.speed else "absent"} " +
-            "mph=unavailable ageMs=${ageMillis(location)} " +
+            "hasBearing=${location.hasBearing()} ageMs=${ageMillis(location)} " +
             "accuracyM=${if (location.hasAccuracy()) location.accuracy else "absent"} " +
-            "state=filtered_$reason")
+            "state=$reason")
     }
 
     override fun onProviderEnabled(provider: String) {
@@ -158,6 +175,6 @@ class ForegroundLocation(
             location.latitude.isFinite() && location.latitude in -90.0..90.0 &&
                 location.longitude.isFinite() && location.longitude in -180.0..180.0 &&
                 location.hasAccuracy() && location.accuracy.isFinite() && location.accuracy > 0 &&
-                ageMillis(location) in 0..120_000
+                LocationFixQuality.fresh(ageMillis(location), location.accuracy)
     }
 }

@@ -7,20 +7,20 @@ Open the app → see your location on USGS aerial imagery → import or download
 ## What works today
 
 - USGS / The National Map Aerial, Hybrid, and Topo maps with a remembered map choice.
-- Foreground GPS location, North Up / Heading Up, follow, recenter, and a GPS speed HUD.
+- Foreground GPS location, North Up / Heading Up, follow, recenter, zoom controls, and a GPS speed HUD.
 - Open either trail endpoint in an installed map app.
-- A map-first Browse view of saved GPX trails, plus a selected-trail details sheet and overlapping-route chooser.
+- A map-first Browse view of saved GPX trails, plus a selected-trail details sheet with neutral A/B route context and an overlapping-route chooser.
 - Local GPX import and a persistent **My Trails** library.
 - Community search, filtering, route preview, and GPX downloads.
 - **Downloads & Storage** for route files and independent offline Aerial, Hybrid, and Topo packages, with progress, pause/resume, and separate removal.
-- **Settings** with Keep screen awake.
+- **Settings** with Keep screen awake, Heading offset for angled mounts, and an optional offline tile-coverage grid.
 - No TrailRelay account, backend, or user API key required.
 
 TrailRelay is Android-only, written in Kotlin with Android Views/XML and MapLibre Native. It supports Android 8.0 (API 26) and newer.
 
 ## Using it offline
 
-Choose a map mode, open a locally stored trail, and choose **Download Offline**. Review the coverage information and start the download. Wait for **Available Offline**, then check the trail with networking disabled before heading out.
+Choose a map mode, open a locally stored trail, and choose **Download Map**. Review the coverage information and start the download. Wait for **Available Offline**, then check the trail with networking disabled before heading out.
 
 New downloads follow a corridor around the GPX trail with about 1.5 km of surrounding context, at zooms 12–16. Large downloads are rejected before downloading. Aerial, Hybrid, and Topo coverage must be downloaded separately; existing aerial packages remain usable. Map tiles outside the downloaded corridor or zoom range may need a network connection. An interrupted download can be resumed from Downloads & Storage.
 
@@ -74,7 +74,7 @@ Source lives under `app/src/main/java/com/trailrelay/app/`:
 | `trails/community/` | GitHub Pages catalog, local search/filtering, and GPX downloads |
 | `offline/` | MapLibre offline regions, trail association, and download lifecycle |
 
-GPX is the canonical trail geometry format. SQLite (`SQLiteOpenHelper`) indexes trail metadata; original GPX files remain in app-private persistent storage. MapLibre manages downloaded imagery in its offline database.
+GPX is the canonical trail geometry format. SQLite (`SQLiteOpenHelper`) indexes trail metadata; original GPX files remain in app-private persistent storage. A disposable app-private cache retains derived geometry for faster cold starts. MapLibre manages downloaded imagery in its offline database.
 
 ## Project philosophy
 

@@ -1,0 +1,4 @@
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_activated="true" android:color="@color/trail_on_primary_container" />
+    <item android:color="@color/trail_on_surface" />
+</selector>

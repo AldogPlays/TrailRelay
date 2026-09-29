@@ -17,6 +17,12 @@
             style="@style/Widget.TrailRelay.MapButton" android:layout_width="wrap_content"
             android:layout_height="wrap_content" android:text="@string/explore"
             app:icon="@drawable/ic_explore" />
+        <TextView android:id="@+id/network_status" android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target" android:layout_marginTop="@dimen/space_related"
+            android:gravity="center" android:background="@drawable/map_hud_background"
+            android:text="☁×" android:textSize="18sp" android:textColor="@color/trail_on_surface"
+            android:contentDescription="@string/map_source_status" android:clickable="true"
+            android:focusable="true" android:visibility="gone" />
         <TextView android:id="@+id/status" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_related"
             android:background="@drawable/status_background" android:padding="@dimen/space_content"
@@ -25,12 +31,12 @@
             android:visibility="gone" />
     </LinearLayout>
     <TextView android:id="@+id/speed_hud" android:layout_width="wrap_content"
-        android:layout_height="@dimen/touch_target" android:layout_gravity="top|end"
+        android:layout_height="wrap_content" android:minHeight="@dimen/touch_target" android:layout_gravity="top|end"
         android:layout_margin="@dimen/space_content" android:gravity="center"
         android:minWidth="72dp" android:paddingStart="@dimen/space_compact"
-        android:paddingEnd="@dimen/space_compact" android:background="@drawable/status_background"
-        android:elevation="4dp" android:text="@string/speed_unavailable"
-        android:textAppearance="?attr/textAppearanceTitleSmall" android:textColor="@color/trail_on_surface" />
+        android:paddingEnd="@dimen/space_compact" android:background="@drawable/map_hud_background"
+        android:paddingVertical="@dimen/space_related" android:text="@string/speed_unavailable"
+        android:textAppearance="?attr/textAppearanceTitleMedium" android:textColor="@color/trail_on_surface" />
 
     <FrameLayout android:id="@+id/selection_card" android:layout_width="match_parent"
         android:layout_height="0dp" android:background="?attr/colorSurface"
@@ -78,55 +84,56 @@
                             android:text="@string/clear_selection" />
                     </LinearLayout>
                 </LinearLayout>
-                <LinearLayout android:id="@+id/selection_expanded" android:layout_width="match_parent"
-                    android:layout_height="wrap_content" android:orientation="vertical"
-                    android:paddingStart="@dimen/space_content" android:paddingEnd="@dimen/space_content"
-                    android:paddingBottom="@dimen/space_content" android:visibility="gone">
-                    <TextView android:id="@+id/selection_meta" android:layout_width="match_parent"
-                        android:layout_height="wrap_content" android:textAppearance="?attr/textAppearanceBodyMedium" />
-                    <TextView android:id="@+id/selection_source" android:layout_width="match_parent"
-                        android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_tight"
-                        android:textAppearance="?attr/textAppearanceBodySmall"
-                        android:textColor="@color/trail_on_surface_variant" />
-                    <TextView android:id="@+id/selection_description" android:layout_width="match_parent"
-                        android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_related"
-                        android:textAppearance="?attr/textAppearanceBodyMedium" android:visibility="gone" />
-                    <com.google.android.material.chip.ChipGroup android:layout_width="match_parent"
-                        android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_related"
-                        app:chipSpacingHorizontal="@dimen/space_related">
-                        <com.google.android.material.chip.Chip android:id="@+id/selection_route_chip"
-                            style="@style/Widget.TrailRelay.StatusChip" android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
-                        <com.google.android.material.chip.Chip android:id="@+id/selection_aerial_chip"
-                            style="@style/Widget.TrailRelay.StatusChip" android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
+                <LinearLayout android:id="@+id/selection_expanded" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="@dimen/space_content" android:paddingBottom="@dimen/space_content" android:visibility="gone">
+                    <TextView android:id="@+id/selection_meta" android:layout_width="match_parent" android:layout_height="wrap_content" android:textAppearance="?attr/textAppearanceBodyMedium" android:textColor="@color/trail_on_surface_variant" />
+                    <com.google.android.material.chip.ChipGroup android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_related" app:chipSpacingHorizontal="@dimen/space_related" app:chipSpacingVertical="@dimen/space_tight">
+                        <com.google.android.material.chip.Chip android:id="@+id/selection_route_chip" style="@style/Widget.TrailRelay.StatusChip" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                        <com.google.android.material.chip.Chip android:id="@+id/selection_aerial_chip" style="@style/Widget.TrailRelay.StatusChip" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </com.google.android.material.chip.ChipGroup>
-                    <TextView android:id="@+id/selection_message" android:layout_width="match_parent"
-                        android:layout_height="wrap_content" android:textAppearance="?attr/textAppearanceBodySmall"
-                        android:accessibilityLiveRegion="polite" android:visibility="gone" />
-                    <com.google.android.material.progressindicator.LinearProgressIndicator
-                        android:id="@+id/selection_progress" android:layout_width="match_parent"
-                        android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_related"
-                        android:visibility="gone" />
-                    <TextView android:id="@+id/selection_offline_state" android:layout_width="match_parent"
-                        android:layout_height="wrap_content" android:textAppearance="?attr/textAppearanceBodySmall"
-                        android:visibility="gone" />
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/space_related" android:orientation="horizontal">
-                        <com.google.android.material.button.MaterialButton android:id="@+id/selection_details"
-                            style="@style/Widget.TrailRelay.OutlinedButton" android:layout_width="0dp"
-                            android:layout_height="wrap_content" android:layout_weight="1"
-                            android:text="@string/trail_details" />
-                        <com.google.android.material.button.MaterialButton android:id="@+id/selection_action"
-                            style="@style/Widget.TrailRelay.MapButton" android:layout_width="0dp"
-                            android:layout_height="wrap_content" android:layout_weight="1"
-                            android:layout_marginStart="@dimen/space_related" android:text="@string/download_trail" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_related" android:orientation="horizontal" android:baselineAligned="false">
+                        <com.google.android.material.button.MaterialButton android:id="@+id/selection_open_maps" style="@style/Widget.TrailRelay.OutlinedButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/open_in_maps" android:visibility="gone" />
+                        <com.google.android.material.button.MaterialButton android:id="@+id/selection_action" style="@style/Widget.TrailRelay.Button" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="@dimen/space_related" android:text="@string/download_trail" />
                     </LinearLayout>
-                    <com.google.android.material.button.MaterialButton android:id="@+id/selection_open_maps"
-                        style="@style/Widget.TrailRelay.OutlinedButton" android:layout_width="match_parent"
-                        android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_related"
-                        android:text="@string/open_in_maps" android:visibility="gone" />
+                    <TextView android:id="@+id/selection_message" android:layout_width="match_parent" android:layout_height="wrap_content" android:textAppearance="?attr/textAppearanceBodySmall" android:accessibilityLiveRegion="polite" android:visibility="gone" />
+                    <com.google.android.material.progressindicator.LinearProgressIndicator android:id="@+id/selection_progress" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="@dimen/space_related" android:visibility="gone" />
+                    <TextView android:id="@+id/selection_offline_state" android:layout_width="match_parent" android:layout_height="wrap_content" android:textAppearance="?attr/textAppearanceBodySmall" android:layout_marginTop="@dimen/space_tight" android:visibility="gone" />
+                    <LinearLayout android:id="@+id/trail_position" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone">
+                        <TextView style="@style/Widget.TrailRelay.SectionTitle" android:text="@string/trail_position_title" />
+                        <TextView android:id="@+id/position_unavailable" android:layout_width="match_parent" android:layout_height="wrap_content" android:textAppearance="?attr/textAppearanceBodySmall" android:text="@string/position_waiting" android:textColor="@color/trail_on_surface_variant" />
+                        <TextView android:id="@+id/position_loop" android:layout_width="match_parent"
+                            android:layout_height="wrap_content" android:text="@string/loop_route"
+                            android:textAppearance="?attr/textAppearanceTitleSmall" android:visibility="gone" />
+                        <LinearLayout android:id="@+id/position_metrics" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:baselineAligned="false">
+                            <LinearLayout android:id="@+id/position_a_group" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingEnd="@dimen/space_related">
+                                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/endpoint_a" android:textAppearance="?attr/textAppearanceLabelMedium" android:textColor="@color/trail_on_surface_variant" />
+                                <TextView android:id="@+id/position_a" style="@style/Widget.TrailRelay.MetricValue" />
+                            </LinearLayout>
+                            <LinearLayout android:id="@+id/position_b_group" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingEnd="@dimen/space_related">
+                                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/endpoint_b" android:textAppearance="?attr/textAppearanceLabelMedium" android:textColor="@color/trail_on_surface_variant" />
+                                <TextView android:id="@+id/position_b" style="@style/Widget.TrailRelay.MetricValue" />
+                            </LinearLayout>
+                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingEnd="@dimen/space_related">
+                                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/from_trail_label" android:textAppearance="?attr/textAppearanceLabelMedium" android:textColor="@color/trail_on_surface_variant" />
+                                <TextView android:id="@+id/position_from" style="@style/Widget.TrailRelay.MetricValue" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </LinearLayout>
+                    <TextView style="@style/Widget.TrailRelay.SectionTitle" android:text="@string/details_section" />
+                    <LinearLayout android:id="@+id/selection_source_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingBottom="@dimen/space_related" android:baselineAligned="true">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:paddingEnd="@dimen/space_compact" android:text="@string/source_label" android:textAppearance="?attr/textAppearanceBodyMedium" android:textColor="@color/trail_on_surface_variant" />
+                        <TextView android:id="@+id/selection_source" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="2" android:textAppearance="?attr/textAppearanceBodyMedium" />
+                    </LinearLayout>
+                    <LinearLayout android:id="@+id/selection_vehicles_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingBottom="@dimen/space_related" android:baselineAligned="true">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:paddingEnd="@dimen/space_compact" android:text="@string/vehicle_types_label" android:textAppearance="?attr/textAppearanceBodyMedium" android:textColor="@color/trail_on_surface_variant" />
+                        <TextView android:id="@+id/selection_vehicles" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="2" android:textAppearance="?attr/textAppearanceBodyMedium" />
+                    </LinearLayout>
+                    <com.google.android.material.button.MaterialButton android:id="@+id/selection_details" style="@style/Widget.TrailRelay.TextButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/trail_details" />
+                    <LinearLayout android:id="@+id/selection_description_section" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                        <TextView style="@style/Widget.TrailRelay.SectionTitle" android:text="@string/description_section" />
+                        <TextView android:id="@+id/selection_description" android:layout_width="match_parent" android:layout_height="wrap_content" android:textAppearance="?attr/textAppearanceBodyMedium" android:lineSpacingExtra="@dimen/space_tight" android:visibility="gone" />
+                    </LinearLayout>
                 </LinearLayout>
+
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
     </FrameLayout>
@@ -134,21 +141,37 @@
     <LinearLayout android:id="@+id/location_controls" android:layout_width="@dimen/touch_target"
         android:layout_height="wrap_content" android:layout_gravity="bottom|end"
         android:layout_marginEnd="@dimen/space_content" android:layout_marginBottom="@dimen/space_content"
-        android:orientation="vertical" android:elevation="4dp">
-        <ImageButton android:id="@+id/orientation" android:layout_width="@dimen/touch_target"
-            android:layout_height="@dimen/touch_target" android:background="@drawable/recenter_background"
-            android:padding="@dimen/space_compact" android:src="@drawable/ic_north_up"
-            android:tint="@color/trail_on_surface" android:contentDescription="@string/orientation_north_up" />
-        <ImageButton android:id="@+id/recenter" android:layout_width="@dimen/touch_target"
-            android:layout_height="@dimen/touch_target" android:layout_marginTop="@dimen/space_related"
-            android:background="@drawable/recenter_background" android:contentDescription="@string/recenter"
-            android:padding="@dimen/space_compact" android:src="@drawable/ic_recenter"
-            android:tint="@color/trail_on_surface" />
+        android:orientation="vertical" android:clipChildren="false" android:clipToPadding="false">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:background="@drawable/status_background"
+            android:elevation="@dimen/map_control_elevation">
+            <ImageButton android:id="@+id/zoom_in" style="@style/Widget.TrailRelay.MapControl"
+                android:src="@drawable/ic_zoom_in" android:contentDescription="@string/zoom_in"
+                android:tooltipText="@string/zoom_in" />
+            <View android:layout_width="match_parent" android:layout_height="1dp"
+                android:layout_marginHorizontal="@dimen/space_compact" android:background="@color/trail_outline"
+                android:importantForAccessibility="no" />
+            <ImageButton android:id="@+id/zoom_out" style="@style/Widget.TrailRelay.MapControl"
+                android:src="@drawable/ic_zoom_out" android:contentDescription="@string/zoom_out"
+                android:tooltipText="@string/zoom_out" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_related" android:orientation="vertical"
+            android:background="@drawable/status_background" android:elevation="@dimen/map_control_elevation">
+            <ImageButton android:id="@+id/orientation" style="@style/Widget.TrailRelay.MapControl"
+                android:src="@drawable/ic_north_up" android:contentDescription="@string/orientation_north_up" />
+            <View android:layout_width="match_parent" android:layout_height="1dp"
+                android:layout_marginHorizontal="@dimen/space_compact" android:background="@color/trail_outline"
+                android:importantForAccessibility="no" />
+            <ImageButton android:id="@+id/recenter" style="@style/Widget.TrailRelay.MapControl"
+                android:src="@drawable/ic_recenter" android:contentDescription="@string/recenter"
+                android:tooltipText="@string/recenter" />
+        </LinearLayout>
     </LinearLayout>
-    <ImageButton android:id="@+id/map_layers" android:layout_width="@dimen/touch_target"
+    <ImageButton android:id="@+id/map_layers" style="@style/Widget.TrailRelay.MapControl" android:layout_width="@dimen/touch_target"
         android:layout_height="@dimen/touch_target" android:layout_gravity="bottom|start"
         android:layout_marginStart="@dimen/space_content" android:layout_marginBottom="@dimen/space_content"
         android:background="@drawable/recenter_background" android:padding="@dimen/space_compact"
         android:src="@drawable/ic_map_layers" android:tint="@color/trail_on_surface"
-        android:contentDescription="@string/map_selector_description" android:elevation="4dp" />
+        android:contentDescription="@string/map_selector_description" android:elevation="@dimen/map_control_elevation" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

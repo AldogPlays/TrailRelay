@@ -18,6 +18,7 @@ import com.trailrelay.app.trails.community.resolveCommunityDownload
 
 /** Call on a worker thread. GPX bytes are staged privately, validated, then published atomically. */
 class TrailStore(private val context: Context) : SQLiteOpenHelper(context, "trails.db", null, 2) {
+    private val geometryDisk = DerivedRouteCache(context.filesDir, report = com.trailrelay.app.Perf::routeCache)
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("""
             CREATE TABLE trails (
@@ -72,7 +73,9 @@ class TrailStore(private val context: Context) : SQLiteOpenHelper(context, "trai
                     arrayOf(trail.id, trail.gpxLocalPath)) != 1) return RouteRemovalResult.FAILED
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
-        return routeRemovalResult(true, removeStoredRouteFile(File(context.filesDir, trail.gpxLocalPath)))
+        val removed = removeStoredRouteFile(File(context.filesDir, trail.gpxLocalPath))
+        geometryDisk.remove(trail.id)
+        return routeRemovalResult(true, removed)
     }
 
     fun retryRouteFileCleanup(trail: Trail): Boolean =
@@ -119,6 +122,7 @@ class TrailStore(private val context: Context) : SQLiteOpenHelper(context, "trai
                     throw error
                 }
             }
+            geometryDisk.write(trail, track)
             return trail
         } finally {
             staged.delete()
@@ -154,6 +158,7 @@ class TrailStore(private val context: Context) : SQLiteOpenHelper(context, "trai
             } finally { db.endTransaction() }
             published = null
             existing?.let { File(context.filesDir, it.gpxLocalPath).delete() }
+            geometryDisk.write(trail, track)
             return trail
         } finally {
             staged.delete()

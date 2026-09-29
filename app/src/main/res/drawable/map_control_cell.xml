@@ -1,0 +1,7 @@
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="?attr/colorControlHighlight">
+    <item><selector>
+        <item android:state_activated="true"><shape><solid android:color="@color/trail_primary_container" /><corners android:radius="@dimen/trail_corner_radius" /></shape></item>
+        <item android:drawable="@android:color/transparent" />
+    </selector></item>
+    <item android:id="@android:id/mask"><shape><solid android:color="@android:color/white" /><corners android:radius="@dimen/trail_corner_radius" /></shape></item>
+</ripple>

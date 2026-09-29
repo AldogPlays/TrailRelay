@@ -1,0 +1,4 @@
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/trail_surface_variant" />
+    <corners android:radius="@dimen/trail_corner_radius" />
+</shape>

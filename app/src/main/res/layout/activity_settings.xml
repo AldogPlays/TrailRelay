@@ -7,11 +7,32 @@
         android:minHeight="@dimen/touch_target" android:orientation="vertical"
         android:gravity="center_vertical">
         <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/keep_screen_awake" android:layout_width="match_parent"
+            android:id="@+id/keep_screen_awake" android:minHeight="@dimen/touch_target" android:textAppearance="?attr/textAppearanceBodyLarge" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:text="@string/keep_screen_awake" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/keep_screen_awake_summary"
             android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="@color/trail_on_surface_variant" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/heading_offset_row" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:minHeight="@dimen/touch_target"
+        android:orientation="vertical" android:gravity="center_vertical"
+        android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true"
+        android:paddingVertical="@dimen/space_related">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/heading_offset" android:textAppearance="?attr/textAppearanceBodyLarge" />
+        <TextView android:id="@+id/heading_offset_summary" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="@color/trail_on_surface_variant" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:minHeight="@dimen/touch_target" android:orientation="vertical" android:gravity="center_vertical">
+        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/show_offline_coverage"
+            android:minHeight="@dimen/touch_target" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="@string/show_offline_coverage"
+            android:textAppearance="?attr/textAppearanceBodyLarge" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/show_offline_coverage_summary" android:textAppearance="?attr/textAppearanceBodySmall"
             android:textColor="@color/trail_on_surface_variant" />
     </LinearLayout>
 </LinearLayout>

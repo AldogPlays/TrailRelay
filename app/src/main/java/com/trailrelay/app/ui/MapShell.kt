@@ -19,6 +19,7 @@ import com.google.android.material.R as MaterialR
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.color.MaterialColors
 import com.trailrelay.app.R
+import com.trailrelay.app.Perf
 
 /** Map overlays own insets; the map itself remains edge-to-edge. */
 class MapShell(activity: AppCompatActivity) {
@@ -44,6 +45,8 @@ class MapShell(activity: AppCompatActivity) {
     private var selectionVisible = false
     private var statusSurfaceShown = false
     private val mapControls = listOf<View>(mapControl, locationControls)
+    private var measuresSinceLog = 0
+    private var lastMeasureLog = 0L
 
     init {
         controller.isAppearanceLightStatusBars = false
@@ -80,8 +83,11 @@ class MapShell(activity: AppCompatActivity) {
                 }
             }
         })
-        summary.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            if (selectionVisible) root.post(::refreshContentHeight)
+        summary.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+            // Measuring details toggles visibility and requests layout. Do not feed that layout
+            // back into another measure unless the summary's actual dimensions changed.
+            if (selectionVisible && (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop))
+                root.post(::refreshContentHeight)
         }
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or
@@ -163,6 +169,7 @@ class MapShell(activity: AppCompatActivity) {
             return
         }
         val previousVisibility = expanded.visibility
+        val measureStarted = Perf.start()
         expanded.visibility = View.VISIBLE
         content.measure(MeasureSpec.makeMeasureSpec(root.width, MeasureSpec.EXACTLY),
             MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
@@ -177,6 +184,15 @@ class MapShell(activity: AppCompatActivity) {
             sheet.layoutParams = params
         }
         updatePeekHeight()
+        if (Perf.enabled) {
+            measuresSinceLog++
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (now - lastMeasureLog >= 2_000L) {
+                Perf.end("sheet_measure", measureStarted, "passesSinceLast=$measuresSinceLog")
+                measuresSinceLog = 0
+                lastMeasureLog = now
+            }
+        }
     }
 
     private fun collapseSelection() {

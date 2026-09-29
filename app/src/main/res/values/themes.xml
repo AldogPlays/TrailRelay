@@ -22,17 +22,17 @@
 
     <style name="Widget.TrailRelay.Button" parent="Widget.Material3.Button">
         <item name="cornerRadius">@dimen/trail_corner_radius</item>
-        <item name="android:minHeight">48dp</item>
+        <item name="android:minHeight">@dimen/touch_target</item>
     </style>
 
     <style name="Widget.TrailRelay.OutlinedButton" parent="Widget.Material3.Button.OutlinedButton">
         <item name="cornerRadius">@dimen/trail_corner_radius</item>
-        <item name="android:minHeight">48dp</item>
+        <item name="android:minHeight">@dimen/touch_target</item>
     </style>
 
     <style name="Widget.TrailRelay.MapButton" parent="Widget.Material3.Button.ElevatedButton">
         <item name="cornerRadius">@dimen/trail_corner_radius</item>
-        <item name="android:minHeight">48dp</item>
+        <item name="android:minHeight">@dimen/touch_target</item>
         <item name="backgroundTint">@color/trail_surface</item>
         <item name="android:textColor">@color/trail_on_surface</item>
     </style>
@@ -54,6 +54,13 @@
         <item name="iconPadding">@dimen/space_content</item>
     </style>
 
+    <style name="Widget.TrailRelay.FilterField" parent="Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+        <item name="boxCornerRadiusTopStart">@dimen/trail_corner_radius</item>
+        <item name="boxCornerRadiusTopEnd">@dimen/trail_corner_radius</item>
+        <item name="boxCornerRadiusBottomStart">@dimen/trail_corner_radius</item>
+        <item name="boxCornerRadiusBottomEnd">@dimen/trail_corner_radius</item>
+    </style>
+
     <style name="ThemeOverlay.TrailRelay.BottomSheet" parent="ThemeOverlay.Material3.BottomSheetDialog">
         <item name="bottomSheetStyle">@style/Widget.TrailRelay.BottomSheet</item>
         <item name="enableEdgeToEdge">true</item>
@@ -66,12 +73,12 @@
 
     <style name="Widget.TrailRelay.StatusChip" parent="Widget.Material3.Chip.Assist">
         <item name="android:minHeight">0dp</item>
-        <item name="chipMinHeight">30dp</item>
+        <item name="chipMinHeight">@dimen/status_chip_height</item>
         <item name="ensureMinTouchTargetSize">false</item>
-        <item name="chipIconSize">18dp</item>
-        <item name="chipStartPadding">8dp</item>
-        <item name="chipEndPadding">8dp</item>
-        <item name="textStartPadding">4dp</item>
+        <item name="chipIconSize">@dimen/status_icon_size</item>
+        <item name="chipStartPadding">@dimen/space_related</item>
+        <item name="chipEndPadding">@dimen/space_related</item>
+        <item name="textStartPadding">@dimen/space_tight</item>
         <item name="textEndPadding">0dp</item>
         <item name="android:textAppearance">?attr/textAppearanceLabelMedium</item>
     </style>
@@ -87,5 +94,34 @@
     <style name="ShapeAppearance.TrailRelay.Dialog" parent="ShapeAppearance.Material3.Corner.Medium">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">@dimen/trail_corner_radius</item>
+    </style>
+    <style name="Widget.TrailRelay.TextButton" parent="Widget.Material3.Button.TextButton">
+        <item name="cornerRadius">@dimen/trail_corner_radius</item>
+        <item name="android:minHeight">@dimen/touch_target</item>
+    </style>
+    <style name="Widget.TrailRelay.DestructiveButton" parent="Widget.TrailRelay.TextButton">
+        <item name="android:textColor">@color/trail_error</item>
+    </style>
+    <style name="Widget.TrailRelay.MapControl" parent="Widget.AppCompat.ImageButton">
+        <item name="android:layout_width">@dimen/touch_target</item>
+        <item name="android:layout_height">@dimen/touch_target</item>
+        <item name="android:padding">@dimen/space_compact</item>
+        <item name="android:background">@drawable/map_control_cell</item>
+        <item name="android:tint">@color/map_control_ink</item>
+        <item name="android:scaleType">centerInside</item>
+    </style>
+    <style name="Widget.TrailRelay.SectionTitle" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">@dimen/space_section</item>
+        <item name="android:layout_marginBottom">@dimen/space_related</item>
+        <item name="android:textAppearance">?attr/textAppearanceTitleSmall</item>
+        <item name="android:accessibilityHeading">true</item>
+    </style>
+    <style name="Widget.TrailRelay.MetricValue" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">@dimen/space_tight</item>
+        <item name="android:textAppearance">?attr/textAppearanceTitleMedium</item>
     </style>
 </resources>

@@ -1,7 +1,3 @@
-<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="@color/trail_primary_container">
-    <item>
-        <shape android:shape="oval">
-            <solid android:color="@color/trail_surface" />
-        </shape>
-    </item>
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="?attr/colorControlHighlight">
+    <item android:drawable="@drawable/status_background" />
 </ripple>

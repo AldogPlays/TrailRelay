@@ -5,20 +5,21 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="@dimen/space_related"
-    app:cardBackgroundColor="@color/trail_surface_variant"
+    app:cardBackgroundColor="@color/trail_surface"
+    app:strokeColor="@color/trail_outline" app:strokeWidth="1dp"
     app:cardCornerRadius="@dimen/trail_corner_radius"
     app:cardElevation="0dp">
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="@dimen/space_content">
+        android:paddingHorizontal="@dimen/space_content" android:paddingVertical="@dimen/space_compact">
         <TextView android:id="@+id/offline_item_name"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:textAppearance="?attr/textAppearanceTitleMedium" />
         <com.google.android.material.chip.ChipGroup
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_related" app:chipSpacingHorizontal="@dimen/space_related"
+            android:layout_marginTop="@dimen/space_tight" app:chipSpacingHorizontal="@dimen/space_related"
             app:chipSpacingVertical="@dimen/space_tight" app:singleLine="false">
             <com.google.android.material.chip.Chip
                 android:id="@+id/offline_item_route_chip"
@@ -69,13 +70,13 @@
                 android:visibility="gone" />
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/offline_item_remove_route"
-                style="@style/Widget.TrailRelay.OutlinedButton"
+                style="@style/Widget.TrailRelay.DestructiveButton"
                 android:layout_width="0dp" android:layout_height="wrap_content"
                 android:layout_weight="1" android:text="@string/remove_route"
                 android:visibility="gone" />
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/offline_item_delete"
-                style="@style/Widget.TrailRelay.OutlinedButton"
+                style="@style/Widget.TrailRelay.DestructiveButton"
                 android:layout_width="0dp" android:layout_height="wrap_content"
                 android:layout_marginStart="@dimen/space_related" android:layout_weight="1"
                 android:text="@string/remove_offline" />
