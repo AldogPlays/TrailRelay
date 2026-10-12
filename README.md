@@ -4,6 +4,47 @@ TrailRelay is an **offline-first Android trail navigation app**, maintained by J
 
 Open the app → see your location on USGS aerial imagery → import or download a GPX trail → open the trail → download offline map coverage → use it without network access.
 
+## Screenshots
+
+
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="docs/map-route.png">
+        <img src="docs/map-route.png" alt="Map showing a trail route" width="260">
+      </a>
+      <br>
+      <sub>Trail navigation</sub>
+    </td>
+    <td align="center">
+      <a href="docs/route-details.png">
+        <img src="docs/route-details.png" alt="Trail details and offline availability" width="260">
+      </a>
+      <br>
+      <sub>Route details</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="docs/my-trails.png">
+        <img src="docs/my-trails.png" alt="Saved trails" width="260">
+      </a>
+      <br>
+      <sub>My Trails</sub>
+    </td>
+    <td align="center">
+      <a href="docs/downloads-storage.png">
+        <img src="docs/downloads-storage.png" alt="Offline map downloads" width="260">
+      </a>
+      <br>
+      <sub>Offline maps and storage</sub>
+    </td>
+  </tr>
+</table>
+
+
 ## What works today
 
 - USGS / The National Map Aerial, Hybrid, and Topo maps with a remembered map choice.
