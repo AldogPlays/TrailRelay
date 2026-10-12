@@ -6,9 +6,6 @@ Open the app → see your location on USGS aerial imagery → import or download
 
 ## Screenshots
 
-
-## Screenshots
-
 <table>
   <tr>
     <td align="center">
