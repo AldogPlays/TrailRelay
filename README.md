@@ -67,7 +67,7 @@ New downloads follow a corridor around the GPX trail with about 1.5 km of surrou
 
 ## Release and safety
 
-The current release is **0.3.0**. See the [release notes](docs/release-notes-0.3.0.md) and [GitHub Releases](https://github.com/AldogPlays/TrailRelay/releases).
+The current release is **0.4.0**. See the [release notes](docs/release-notes-0.4.0.md) and [GitHub Releases](https://github.com/AldogPlays/TrailRelay/releases).
 
 TrailRelay is a solo project. Trail and catalog metadata may be incomplete, and downloaded coverage should be checked before relying on it remotely. You are responsible for checking trail legality, closures, land access, and safe navigation. Keep another navigation and safety option available; TrailRelay should not be your sole system in remote areas.
 
@@ -101,7 +101,7 @@ app/build/outputs/apk/debug/app-debug.apk
 
 Development testing currently primarily uses a physical Android device. An emulator is not required for these JVM tests or the debug build. Successful compilation does not verify GPS or offline behavior on a device.
 
-GitHub Actions runs the unit tests and builds the debug APK for pushes and pull requests to `main`, without signing secrets or automatic publishing. For a signed release APK, follow the [local release instructions](docs/releasing.md).
+Validation runs locally; this repository has no GitHub Actions workflow, and GitHub Actions is disabled in the repository settings. Run the unit tests and debug build above before submitting changes. Release preparation also requires `./gradlew :app:assembleRelease` and `git diff --check`. For signing and physical-device upgrade checks, follow the [local release instructions](docs/releasing.md).
 
 ## Architecture
 
