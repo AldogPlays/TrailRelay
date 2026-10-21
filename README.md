@@ -1,14 +1,16 @@
 # TrailRelay
 
-TrailRelay is a **free, open-source, offline-first Android trail navigation app** developed as a solo project. It brings together USGS maps, locally stored GPX trails, and downloadable map coverage for use without a network connection.
+An Android trail navigation app with USGS maps, GPX trails, and downloadable map coverage. Import a route or choose a community trail, save its maps, and use both without a network connection.
 
-Open the app → view your location on USGS maps → import or download a GPX trail → open the trail → download offline map coverage → use it without network access.
+Requires Android 8.0 (API 26) or newer. No TrailRelay account or user API key required.
 
 ## Download
 
 Find the latest release and available downloads on [GitHub Releases](https://github.com/AldogPlays/TrailRelay/releases).
 
 ## Screenshots
+
+Click a screenshot to view it larger.
 
 <table>
   <tr>
