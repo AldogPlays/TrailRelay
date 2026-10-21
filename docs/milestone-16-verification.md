@@ -1,9 +1,10 @@
 # Milestone 16: Map usability and trail context
 
 Baseline: `v0.3.0`. Branch: `milestone/map-usability-trail-context`.
-Physical-device verification was approved before the final Git publication workflow.
-The staged test instructions and earlier handoff notes below are retained as a
-record of how this milestone was verified; they are not current approval gates.
+The maintainer reported physical-device verification before publication.
+This historical record retains the investigation, measurements, and staged test
+checklists. Earlier pending checks describe their status at that stage; they do
+not establish test coverage for later changes.
 
 ## Heading investigation
 
@@ -136,7 +137,7 @@ Optional elevation was deferred: location altitude availability alone does not
 establish a reliable elevation display. The installed SDK exposes no built-in
 scale-bar UI; adding a plugin or custom scale calculation was deferred.
 
-## Developer verification
+## Manual verification checklist
 
 From the repository root, in Fish:
 
@@ -192,12 +193,12 @@ device tests are part of this milestone.
    coordinates, fade before overlap, cannot be tapped when hidden and return as
    clearance opens. Check portrait and landscape for control crowding.
 
-Report physical-device results before any commit, merge, push or tag.
+Record the test device, build, and results when repeating these checks.
 
 ## Presentation polish after functional verification
 
-The developer confirmed the milestone's functionality on a physical phone before
-this presentation pass. The new visual result still needs physical approval.
+The maintainer reported working functionality on a physical phone before this
+visual pass. At this stage, the revised layout still needed device review.
 
 Audit and focused changes:
 
@@ -236,8 +237,8 @@ Visual review on **TrailRelay Dev**, at normal and increased system font size:
   apply again; results should match the prior behavior. Check Community's fixed
   header and scrolling search row. Settings should remain a simple switch row.
 
-Use the same installation commands above. Automated validation cannot establish
-the visual result on the phone; do not commit until that result is approved.
+Use the installation commands above to repeat the visual checks. Automated
+validation does not establish the rendered layout on a phone.
 
 ## Responsiveness investigation and follow-up
 
@@ -353,8 +354,8 @@ switch Aerial/Hybrid/Topo and route selections, then clear selection; no obsolet
 route should reappear. Check offline download progress and **Download Map** labels
 in the sheet and Trail Detail. Recheck heading, markers and control fading.
 
-These automated results alone did not authorize Git publication; the developer
-subsequently approved the physical result and the Milestone 16 Git workflow.
+After the automated checks, the maintainer reported successful physical-device
+verification before Milestone 16 was published.
 
 ### Persistent geometry follow-up
 
@@ -523,5 +524,5 @@ Storage, offline map use and map-control fading around the sheet. “Download Ma
 wording remains.
 
 No automated build verifies GPS hardware, compass calibration, imagery quality,
-native MapLibre drawing or actual offline coverage on the phone. The developer
-approved physical verification before the Milestone 16 Git publication workflow.
+native MapLibre drawing or actual offline coverage on the phone. The maintainer
+reported physical-device verification before Milestone 16 was published.
