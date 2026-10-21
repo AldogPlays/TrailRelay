@@ -2,6 +2,20 @@
 
 TrailRelay is a simple local-first, offline-first Android trail navigation app.
 
+## Documentation and historical records
+
+Keep public guides focused on users, contributors, reproducible checks, and
+technical findings. Keep agent workflow and authorization requirements in this
+file. `docs/milestone-16-verification.md` is a historical investigation and test
+record: its staged instructions and pending statuses are not a current task list
+or a substitute for the workflow below. Preserve its measurements, evidence,
+reported-result attribution, and limitations when editing it. Do not turn past
+device results or build success into claims about an untested current change.
+
+Follow `docs/releasing.md` for release preparation and the release-specific
+authorization rules below for publication. Documentation-only changes need link,
+formatting, and factual checks rather than Gradle builds or phone testing.
+
 ## Core product
 
 The primary experience is:

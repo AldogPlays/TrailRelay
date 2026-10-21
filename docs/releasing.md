@@ -149,16 +149,15 @@ If a check fails, keep the release unpublished and fix/rebuild/re-sign/retest.
 
 ## 6. Publish only after upgrade verification
 
-Stop after signing and device testing and report the results. Publication needs
-explicit release-specific approval. It consists of committing the version,
-documentation, and workflow removal; merging/pushing `main`; creating the annotated
-`v0.4.0` tag at that release commit; and publishing a stable GitHub Release using
-`docs/release-notes-0.4.0.md`.
+After signing and device testing, record the results and have the maintainer
+approve the release candidate. Publish the reviewed version and documentation
+on `main`, create the annotated `v0.4.0` tag at that release commit, and publish
+a stable GitHub Release using `docs/release-notes-0.4.0.md`.
 
 Immediately before publication, recheck repository status, local validation,
 version metadata, and signature. If a rebuild changes the APK, sign and test that
 exact artifact again. Upload only the verified signed `TrailRelay-0.4.0.apk` and
 its `.apk.sha256` companion, never the unsigned APK or signing files. Verify the
 published asset name, byte size, and digest against the tested local artifact.
-Update README's release status to published 0.4.0 when publication is authorized.
+Keep README's release status consistent with the published release.
 Keep GitHub Actions disabled. Never force-add the keystore, passwords, APKs, or AABs.
